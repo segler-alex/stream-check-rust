@@ -1,0 +1,8 @@
+[package]
+name = "stream-check-rust"
+version = "0.1.0"
+authors = ["segler <segler_alex@web.de>"]
+
+[dependencies]
+url = "1.7.0"
+native-tls = "0.1.5"
