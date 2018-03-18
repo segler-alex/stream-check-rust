@@ -110,7 +110,7 @@ impl Request {
         let mut stream = TcpStream::connect(connect_str)?;
 
         if self.url.scheme() == "https" {
-            let connector = TlsConnector::builder().unwrap().build()?;
+            let connector = TlsConnector::builder()?.build()?;
             let mut stream = connector.connect(host, stream)?;
             self.send_request(&mut stream, &host)?;
             Request::read_request(&mut stream)
