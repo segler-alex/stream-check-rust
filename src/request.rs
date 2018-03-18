@@ -45,13 +45,78 @@ pub struct HttpHeaders {
 
 pub struct Request {
     url: Url,
+    pub info: HttpHeaders,
+    readable: Box<Read>,
+    content_read_done: bool,
+    content: String,
 }
 
 impl Request {
     pub fn new(url_str: &str) -> BoxResult<Request> {
-        Ok(Request {
-            url: Url::parse(url_str)?,
-        })
+        let url = Url::parse(url_str)?;
+
+        let host = url.host_str()
+            .ok_or(RequestError::new("illegal host name"))?;
+        let port = url.port_or_known_default()
+            .ok_or(RequestError::new("port unknown"))?;
+
+        let connect_str = format!("{}:{}", host, port);
+        let mut stream = TcpStream::connect(connect_str)?;
+
+        if url.scheme() == "https" {
+            let connector = TlsConnector::builder()?.build()?;
+            let mut stream = connector.connect(host, stream)?;
+            Request::send_request(&mut stream, &host, url.path())?;
+            let header = Request::read_request(&mut stream)?;
+            Ok(Request {
+                url: url.clone(),
+                info: header,
+                readable: Box::new(stream),
+                content_read_done: false,
+                content: String::from(""),
+            })
+        } else if url.scheme() == "http" {
+            Request::send_request(&mut stream, &host, url.path())?;
+            let header = Request::read_request(&mut stream)?;
+            Ok(Request {
+                url: url.clone(),
+                info: header,
+                readable: Box::new(stream),
+                content_read_done: false,
+                content: String::from(""),
+            })
+        } else {
+            Err(Box::new(RequestError::new("unknown scheme")))
+        }
+    }
+
+    pub fn read_content(&mut self) {
+        if self.content_read_done {
+            return;
+        }
+        self.content_read_done = true;
+
+        let content_length: usize = self.info
+            .headers
+            .get("content-length")
+            .unwrap_or(&String::from(""))
+            .parse()
+            .unwrap_or(0);
+
+        let mut buffer = vec![0; content_length];
+        self.readable.read_exact(&mut buffer);
+
+        let out = String::from_utf8(buffer);
+        match out {
+            Ok(out) => {
+                self.content = out;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn get_content<'a>(&'a self) -> &'a str {
+        &self.content
     }
 
     fn read_stream_until(stream: &mut Read, condition: &'static [u8]) -> BoxResult<String> {
@@ -82,44 +147,14 @@ impl Request {
         Ok(out)
     }
 
-    fn send_request(&self, stream: &mut Write, host: &str) -> BoxResult<()> {
+    fn send_request(stream: &mut Write, host: &str, path: &str) -> BoxResult<()> {
         let request_str = format!(
-            "GET {} HTTP/1.1\r\nHost: {}\r\nRange: bytes=0-1\r\nConnection: close\r\n\r\n",
-            self.url.path(),
-            host
+            "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+            path, host
         );
         stream.write(request_str.as_bytes())?;
         stream.flush()?;
         Ok(())
-    }
-
-    pub fn connect(&self) -> BoxResult<HttpHeaders> {
-        let host = self.url
-            .host_str()
-            .ok_or(RequestError::new("illegal host name"))?;
-        let port = self.url
-            .port_or_known_default()
-            .ok_or(RequestError::new("port unknown"))?;
-        println!("Connect to {}", self.url);
-        println!("Scheme: {}", self.url.scheme());
-        println!("Host: {}", host);
-        println!("Port: {}", port);
-        println!("Path: {}", self.url.path());
-
-        let connect_str = format!("{}:{}", host, port);
-        let mut stream = TcpStream::connect(connect_str)?;
-
-        if self.url.scheme() == "https" {
-            let connector = TlsConnector::builder()?.build()?;
-            let mut stream = connector.connect(host, stream)?;
-            self.send_request(&mut stream, &host)?;
-            Request::read_request(&mut stream)
-        } else if self.url.scheme() == "http" {
-            self.send_request(&mut stream, &host)?;
-            Request::read_request(&mut stream)
-        } else {
-            Err(Box::new(RequestError::new("unknown scheme")))
-        }
     }
 
     fn read_request(stream: &mut Read) -> BoxResult<HttpHeaders> {
@@ -149,7 +184,7 @@ impl Request {
                     let (key, value) = line.split_at(index);
                     httpinfo
                         .headers
-                        .insert(String::from(key), String::from(value[1..].trim()));
+                        .insert(String::from(key).to_lowercase(), String::from(value[1..].trim()));
                 }
                 _ => {}
             }
