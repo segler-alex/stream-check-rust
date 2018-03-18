@@ -6,3 +6,5 @@ authors = ["segler <segler_alex@web.de>"]
 [dependencies]
 url = "1.7.0"
 native-tls = "0.1.5"
+diesel = { version = "1.1.1", features = ["mysql","chrono"] }
+chrono = "*"
