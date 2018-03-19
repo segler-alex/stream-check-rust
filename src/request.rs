@@ -55,7 +55,6 @@ use std::time::Duration;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::net::IpAddr;
 
-
 impl Request {
     pub fn new(url_str: &str) -> BoxResult<Request> {
         let url = Url::parse(url_str)?;
@@ -67,7 +66,12 @@ impl Request {
 
         let connect_str = format!("{}:{}", host, port);
         let mut addrs_iter = connect_str.to_socket_addrs()?;
-        let mut stream = TcpStream::connect_timeout(&addrs_iter.next().ok_or(RequestError::new("resolve not ok"))?, Duration::from_millis(5*1000))?;
+        let mut stream = TcpStream::connect_timeout(
+            &addrs_iter
+                .next()
+                .ok_or(RequestError::new("unable to resolve hostname"))?,
+            Duration::from_millis(5 * 1000),
+        )?;
 
         if url.scheme() == "https" {
             let connector = TlsConnector::builder()?.build()?;
@@ -168,11 +172,11 @@ impl Request {
         let out = Request::read_stream_until(stream, b"\r\n")?;
 
         if !out.starts_with("HTTP/") {
-            return Err(Box::new(RequestError::new("not http!")));
+            return Err(Box::new(RequestError::new("HTTP header missing")));
         }
 
         if out.len() < 14 {
-            return Err(Box::new(RequestError::new("http status line too short")));
+            return Err(Box::new(RequestError::new("HTTP status line too short")));
         }
 
         let mut httpinfo = HttpHeaders {
@@ -189,9 +193,10 @@ impl Request {
             match line.find(':') {
                 Some(index) => {
                     let (key, value) = line.split_at(index);
-                    httpinfo
-                        .headers
-                        .insert(String::from(key).to_lowercase(), String::from(value[1..].trim()));
+                    httpinfo.headers.insert(
+                        String::from(key).to_lowercase(),
+                        String::from(value[1..].trim()),
+                    );
                 }
                 _ => {}
             }
