@@ -51,6 +51,11 @@ pub struct Request {
     content: String,
 }
 
+use std::time::Duration;
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::IpAddr;
+
+
 impl Request {
     pub fn new(url_str: &str) -> BoxResult<Request> {
         let url = Url::parse(url_str)?;
@@ -61,7 +66,8 @@ impl Request {
             .ok_or(RequestError::new("port unknown"))?;
 
         let connect_str = format!("{}:{}", host, port);
-        let mut stream = TcpStream::connect(connect_str)?;
+        let mut addrs_iter = connect_str.to_socket_addrs()?;
+        let mut stream = TcpStream::connect_timeout(&addrs_iter.next().ok_or(RequestError::new("resolve not ok"))?, Duration::from_millis(5*1000))?;
 
         if url.scheme() == "https" {
             let connector = TlsConnector::builder()?.build()?;
@@ -143,8 +149,9 @@ impl Request {
                 }
             }
         }
-        let out = String::from_utf8(bytes)?;
-        Ok(out)
+        let out = String::from_utf8_lossy(&bytes);
+        //let out_str = String::from_utf8_lossy(&buffer).to_owned().to_string();
+        Ok(out.to_string())
     }
 
     fn send_request(stream: &mut Write, host: &str, path: &str) -> BoxResult<()> {

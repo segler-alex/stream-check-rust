@@ -1,9 +1,11 @@
+#![allow(non_snake_case)]
 use request::Request;
 use pls;
 
 #[derive(Debug)]
 pub struct StreamInfo{
     pub Name: String,
+    pub Description: String,
     pub Type: String,
     pub Url: String,
     pub Homepage: String,
@@ -29,7 +31,7 @@ fn type_is_playlist(content_type: &str) -> bool {
 }
 
 fn type_is_stream(content_type: &str) -> bool {
-    return content_type == "audio/mpeg";
+    return content_type == "audio/mpeg" || content_type == "audio/aacp";
 }
 
 pub fn check(url: &str) -> Vec<StreamInfo> {
@@ -58,11 +60,11 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                     list.extend(decode_playlist(request.get_content()));
                 }
                 if is_stream {
-                    //decode_stream(request.info);
                     let stream = StreamInfo{
                         Url: String::from(url),
                         Type: request.info.headers.get("content-type").unwrap_or(&String::from("")).clone(),
                         Name: request.info.headers.get("icy-name").unwrap_or(&String::from("")).clone(),
+                        Description: request.info.headers.get("icy-description").unwrap_or(&String::from("")).clone(),
                         Homepage: request.info.headers.get("icy-url").unwrap_or(&String::from("")).clone(),
                         Bitrate: request.info.headers.get("icy-br").unwrap_or(&String::from("")).parse().unwrap_or(0),
                         Genre: request.info.headers.get("icy-genre").unwrap_or(&String::from("")).clone(),
@@ -80,7 +82,7 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                 }
             }
         }
-        Err(err) => println!("{}", err),
+        Err(err) => println!("Connection error: {}", err),
     }
     list
 }
