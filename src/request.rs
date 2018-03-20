@@ -111,7 +111,7 @@ impl Request {
             .get("content-length")
             .unwrap_or(&String::from(""))
             .parse()
-            .unwrap_or(0);
+            .unwrap_or(1000);
 
         let mut buffer = vec![0; content_length];
         self.readable.read_exact(&mut buffer);
@@ -154,7 +154,6 @@ impl Request {
             }
         }
         let out = String::from_utf8_lossy(&bytes);
-        //let out_str = String::from_utf8_lossy(&buffer).to_owned().to_string();
         Ok(out.to_string())
     }
 
@@ -168,23 +167,32 @@ impl Request {
         Ok(())
     }
 
-    fn read_request(stream: &mut Read) -> BoxResult<HttpHeaders> {
-        let out = Request::read_stream_until(stream, b"\r\n")?;
-
-        if !out.starts_with("HTTP/") {
+    fn decode_first_line(line: &str) -> BoxResult<HttpHeaders> {
+        if line.starts_with("HTTP/") {
+            if line.len() < 14 {
+                return Err(Box::new(RequestError::new("HTTP status line too short")));
+            }
+            Ok(HttpHeaders {
+                code: line[9..12].parse()?,
+                message: String::from(&line[13..]),
+                version: String::from(&line[5..8]),
+                headers: HashMap::new(),
+            })
+        } else if line.starts_with("ICY") {
+            Ok(HttpHeaders {
+                code: line[4..7].parse()?,
+                message: String::from(&line[8..]),
+                version: String::from(""),
+                headers: HashMap::new(),
+            })
+        } else {
             return Err(Box::new(RequestError::new("HTTP header missing")));
         }
+    }
 
-        if out.len() < 14 {
-            return Err(Box::new(RequestError::new("HTTP status line too short")));
-        }
-
-        let mut httpinfo = HttpHeaders {
-            code: out[9..12].parse()?,
-            message: String::from(&out[13..]),
-            version: String::from(&out[5..8]),
-            headers: HashMap::new(),
-        };
+    fn read_request(stream: &mut Read) -> BoxResult<HttpHeaders> {
+        let out = Request::read_stream_until(stream, b"\r\n")?;
+        let mut httpinfo = Request::decode_first_line(&out)?;
 
         let out = Request::read_stream_until(stream, b"\r\n\r\n")?;
         let lines = out.lines();

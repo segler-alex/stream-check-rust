@@ -52,14 +52,19 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                                 is_stream = true;
                             }
                         }
-                        None => {}
+                        None => {
+                            println!("missing content-type in http header");
+                        }
                     }
                 }
                 if is_playlist {
                     request.read_content();
-                    list.extend(decode_playlist(request.get_content()));
-                }
-                if is_stream {
+                    let playlist = decode_playlist(request.get_content());
+                    if playlist.len() == 0{
+                        println!("Empty playlist ({})", url);
+                    }
+                    list.extend(playlist);
+                }else if is_stream {
                     let stream = StreamInfo{
                         Url: String::from(url),
                         Type: request.info.headers.get("content-type").unwrap_or(&String::from("")).clone(),
@@ -71,6 +76,9 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                         Sampling: request.info.headers.get("icy-sr").unwrap_or(&String::from("")).parse().unwrap_or(0),
                     };
                     list.push(stream);
+                } else {
+                    let content_type: String = request.info.headers.get("content-type").unwrap_or(&String::from("")).clone();
+                    println!("unknown content type {}", content_type);
                 }
             } else if request.info.code >= 300 && request.info.code < 400 {
                 let location = request.info.headers.get("location");
@@ -80,6 +88,8 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                     }
                     None => {}
                 }
+            } else {
+                println!("illegal http status code {}", request.info.code);
             }
         }
         Err(err) => println!("Connection error: {}", err),

@@ -27,14 +27,13 @@ fn debugcheck(url: &str) {
 
 fn dbcheck() {
     let conn = db::establish_connection();
-    let stations = db::get_stations(conn, 20);
+    let stations = db::get_stations(conn, 50);
 
     let n_workers = 1;
     let pool = ThreadPool::new(n_workers);
     println!("dbcheck()");
     for station in stations {
         println!("queued {}", station.Name);
-    //for i in 0..n_jobs {
         pool.execute(move || {
             println!("started {} - {}", station.Name, station.Url);
             debugcheck(&station.Url);
