@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use request::Request;
 use pls;
+use m3u;
 
 #[derive(Debug)]
 pub struct StreamInfo{
@@ -50,6 +51,8 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                                 is_playlist = true;
                             } else if type_is_stream(content_type) {
                                 is_stream = true;
+                            }else{
+                                println!("unknown content type {}", content_type);
                             }
                         }
                         None => {
@@ -76,9 +79,6 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                         Sampling: request.info.headers.get("icy-sr").unwrap_or(&String::from("")).parse().unwrap_or(0),
                     };
                     list.push(stream);
-                } else {
-                    let content_type: String = request.info.headers.get("content-type").unwrap_or(&String::from("")).clone();
-                    println!("unknown content type {}", content_type);
                 }
             } else if request.info.code >= 300 && request.info.code < 400 {
                 let location = request.info.headers.get("location");
@@ -98,10 +98,38 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
 }
 
 fn decode_playlist(content: &str) -> Vec<StreamInfo> {
-    let pls_items = pls::decode_playlist_pls(content);
     let mut list = vec![];
-    for item in pls_items {
-        list.extend(check(&item.url));
+
+    match content.to_lowercase().find("[playlist]"){
+        Some(_) => {
+            let pls_items = pls::decode_playlist(content);
+            for item in pls_items {
+                list.extend(check(&item.url));
+            }
+        }
+        None => {
+            let m3u_items = m3u::decode_playlist(content);
+            for item in m3u_items {
+                list.extend(check(&item.url));
+            }
+        }
     }
+    
     list
+}
+
+/*fn fixPlaylistItem(url: &str, playlistItem: &str) -> BoxResult<String> {
+    if (hasCorrectScheme(playlistItem)){
+        let remoteDir = getRemoteDirUrl(url);
+        if (remoteDir != false){
+            Ok(Box::new(format!("{}/{}",remoteDir,playlistItem)))
+        }
+        Err()
+    }
+    Ok(playlistItem)
+}*/
+
+fn hasCorrectScheme(url: &str) -> bool {
+    let lower = url.to_lowercase();
+    return lower.starts_with("http://") || lower.starts_with("https://");
 }

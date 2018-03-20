@@ -17,6 +17,7 @@ mod request;
 mod db;
 mod streamcheck;
 mod pls;
+mod m3u;
 
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url);

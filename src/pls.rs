@@ -5,7 +5,7 @@ pub struct PlaylistItem {
     pub url: String,
 }
 
-pub fn decode_playlist_pls(content: &str) -> Vec<PlaylistItem> {
+pub fn decode_playlist(content: &str) -> Vec<PlaylistItem> {
     let lines = content.lines();
     let mut list = vec![];
     let mut found_pls = false;
