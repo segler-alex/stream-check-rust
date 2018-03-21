@@ -52,8 +52,7 @@ pub struct Request {
 }
 
 use std::time::Duration;
-use std::net::{SocketAddr, ToSocketAddrs};
-use std::net::IpAddr;
+use std::net::{ToSocketAddrs};
 
 impl Request {
     pub fn new(url_str: &str) -> BoxResult<Request> {

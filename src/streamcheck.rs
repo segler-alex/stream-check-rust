@@ -173,7 +173,7 @@ fn fixPlaylistItem(url: &str, playlistItem: &str) -> BoxResult<String> {
     Ok(playlistItem)
 }*/
 
-fn hasCorrectScheme(url: &str) -> bool {
+/*fn hasCorrectScheme(url: &str) -> bool {
     let lower = url.to_lowercase();
     return lower.starts_with("http://") || lower.starts_with("https://");
-}
+}*/
