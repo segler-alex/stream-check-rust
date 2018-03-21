@@ -3,6 +3,8 @@ extern crate native_tls;
 extern crate threadpool;
 extern crate url;
 
+extern crate quick_xml;
+
 #[macro_use]
 extern crate diesel;
 
@@ -18,6 +20,7 @@ mod db;
 mod streamcheck;
 mod pls;
 mod m3u;
+mod asx;
 
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url);

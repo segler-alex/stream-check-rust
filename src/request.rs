@@ -111,7 +111,7 @@ impl Request {
             .get("content-length")
             .unwrap_or(&String::from(""))
             .parse()
-            .unwrap_or(1000);
+            .unwrap_or(10000);
 
         let mut buffer = vec![0; content_length];
         self.readable.read_exact(&mut buffer);
@@ -159,7 +159,7 @@ impl Request {
 
     fn send_request(stream: &mut Write, host: &str, path: &str) -> BoxResult<()> {
         let request_str = format!(
-            "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
+            "GET {} HTTP/1.0\r\nHost: {}\r\nAccept: */*\r\nConnection: close\r\n\r\n",
             path, host
         );
         stream.write(request_str.as_bytes())?;

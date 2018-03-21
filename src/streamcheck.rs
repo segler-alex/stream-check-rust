@@ -2,6 +2,7 @@
 use request::Request;
 use pls;
 use m3u;
+use asx;
 
 #[derive(Debug)]
 pub struct StreamInfo{
@@ -27,8 +28,16 @@ fn type_is_pls(content_type: &str) -> bool {
         || content_type == "application/pls+xml";
 }
 
+fn type_is_asx(content_type: &str) -> bool {
+    return content_type == "video/x-ms-asx" || content_type == "video/x-ms-asf";
+}
+
+fn type_is_xspf(content_type: &str) -> bool {
+    return content_type == "application/xspf+xml";
+}
+
 fn type_is_playlist(content_type: &str) -> bool {
-    return type_is_m3u(content_type) || type_is_pls(content_type);
+    return type_is_m3u(content_type) || type_is_pls(content_type) || type_is_asx(content_type) || type_is_xspf(content_type);
 }
 
 fn type_is_stream(content_type: &str) -> bool {
@@ -100,17 +109,27 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
 fn decode_playlist(content: &str) -> Vec<StreamInfo> {
     let mut list = vec![];
 
-    match content.to_lowercase().find("[playlist]"){
-        Some(_) => {
-            let pls_items = pls::decode_playlist(content);
+    match content.to_lowercase().find("<asx"){
+        Some(_)=>{
+            let pls_items = asx::decode_playlist(content);
             for item in pls_items {
                 list.extend(check(&item.url));
             }
         }
-        None => {
-            let m3u_items = m3u::decode_playlist(content);
-            for item in m3u_items {
-                list.extend(check(&item.url));
+        None =>{
+            match content.to_lowercase().find("[playlist]"){
+                Some(_) => {
+                    let pls_items = pls::decode_playlist(content);
+                    for item in pls_items {
+                        list.extend(check(&item.url));
+                    }
+                }
+                None => {
+                    let m3u_items = m3u::decode_playlist(content);
+                    for item in m3u_items {
+                        list.extend(check(&item.url));
+                    }
+                }
             }
         }
     }
@@ -118,7 +137,20 @@ fn decode_playlist(content: &str) -> Vec<StreamInfo> {
     list
 }
 
-/*fn fixPlaylistItem(url: &str, playlistItem: &str) -> BoxResult<String> {
+/*fn getRemoteDirUrl(url: &str) {
+    $parsed_url = parse_url($url);
+    if ($parsed_url) {
+        $scheme = isset($parsed_url['scheme']) ? $parsed_url['scheme'].'://' : '';
+        $host = isset($parsed_url['host']) ? $parsed_url['host'] : '';
+        $port = isset($parsed_url['port']) ? ':'.$parsed_url['port'] : '';
+        $path = isset($parsed_url['path']) ? dirname($parsed_url['path']) : '';
+        return "$scheme$host$port$path";
+    }
+
+    return null;
+}
+
+fn fixPlaylistItem(url: &str, playlistItem: &str) -> BoxResult<String> {
     if (hasCorrectScheme(playlistItem)){
         let remoteDir = getRemoteDirUrl(url);
         if (remoteDir != false){
