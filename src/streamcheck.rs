@@ -15,6 +15,7 @@ pub struct StreamInfo{
     pub Genre: String,
     pub Bitrate: u32,
     pub Sampling: u32,
+    pub Codec: String,
 }
 
 fn type_is_m3u(content_type: &str) -> bool {
@@ -41,8 +42,20 @@ fn type_is_playlist(content_type: &str) -> bool {
     return type_is_m3u(content_type) || type_is_pls(content_type) || type_is_asx(content_type) || type_is_xspf(content_type);
 }
 
-fn type_is_stream(content_type: &str) -> bool {
-    return content_type == "audio/mpeg" || content_type == "audio/aacp";
+fn type_is_stream(content_type: &str) -> Option<&str> {
+    match content_type {
+        "audio/mpeg" => Some("MP3"),
+        "audio/mp3" => Some("MP3"),
+        "audio/aac" => Some("AAC"),
+        "audio/x-aac" => Some("AAC"),
+        "audio/aacp" => Some("AAC+"),
+        "audio/ogg" => Some("OGG"),
+        "application/ogg" => Some("OGG"),
+        "audio/flac" => Some("FLAC"),
+        "application/flv" => Some("FLV"),
+        "application/octet-stream" => Some("UNKNOWN"),
+        _ => None
+    }
 }
 
 pub fn check(url: &str) -> Vec<StreamInfo> {
@@ -53,13 +66,15 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
             if request.info.code >= 200 && request.info.code < 300 {
                 let mut is_playlist = false;
                 let mut is_stream = false;
+                let mut stream_type = String::from("");
                 {
                     let content_type = request.info.headers.get("content-type");
                     match content_type {
                         Some(content_type) => {
                             if type_is_playlist(content_type) {
                                 is_playlist = true;
-                            } else if type_is_stream(content_type) {
+                            } else if type_is_stream(content_type).is_some() {
+                                stream_type = String::from(type_is_stream(content_type).unwrap_or(""));
                                 is_stream = true;
                             }else{
                                 println!("unknown content type {}", content_type);
@@ -87,6 +102,7 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                         Bitrate: request.info.headers.get("icy-br").unwrap_or(&String::from("")).parse().unwrap_or(0),
                         Genre: request.info.headers.get("icy-genre").unwrap_or(&String::from("")).clone(),
                         Sampling: request.info.headers.get("icy-sr").unwrap_or(&String::from("")).parse().unwrap_or(0),
+                        Codec: stream_type,
                     };
                     list.push(stream);
                 }
