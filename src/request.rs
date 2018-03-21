@@ -113,7 +113,13 @@ impl Request {
             .unwrap_or(10000);
 
         let mut buffer = vec![0; content_length];
-        self.readable.read_exact(&mut buffer);
+        let read_result = self.readable.read_exact(&mut buffer);
+        match read_result {
+            Ok(_)=>{}
+            Err(e)=>{
+                println!("readexact error {}", e);
+            }
+        }
 
         let out = String::from_utf8(buffer);
         match out {
