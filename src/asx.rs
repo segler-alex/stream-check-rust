@@ -64,6 +64,8 @@ pub fn decode_playlist(content: &str) -> Vec<PlaylistItem> {
                 let path = xml_stack.join("/");
                 if path == "asx/entry" {
                     list.push(item.clone());
+                    item.title = String::from("");
+                    item.url = String::from("");
                 }
                 xml_stack.pop();
             }

@@ -21,6 +21,7 @@ mod streamcheck;
 mod pls;
 mod m3u;
 mod asx;
+mod xspf;
 
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url);

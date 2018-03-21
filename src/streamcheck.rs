@@ -3,6 +3,7 @@ use request::Request;
 use pls;
 use m3u;
 use asx;
+use xspf;
 
 #[derive(Debug)]
 pub struct StreamInfo{
@@ -33,7 +34,7 @@ fn type_is_asx(content_type: &str) -> bool {
 }
 
 fn type_is_xspf(content_type: &str) -> bool {
-    return content_type == "application/xspf+xml";
+    return content_type == "application/xspf+xml" || content_type == "application/xml";
 }
 
 fn type_is_playlist(content_type: &str) -> bool {
@@ -101,7 +102,7 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                 println!("illegal http status code {}", request.info.code);
             }
         }
-        Err(err) => println!("Connection error: {}", err),
+        Err(err) => println!("Connection error: {} - {}", url, err),
     }
     list
 }
@@ -109,25 +110,36 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
 fn decode_playlist(content: &str) -> Vec<StreamInfo> {
     let mut list = vec![];
 
-    match content.to_lowercase().find("<asx"){
+    match content.to_lowercase().find("<playlist"){
         Some(_)=>{
-            let pls_items = asx::decode_playlist(content);
-            for item in pls_items {
+            let xspf_items = xspf::decode_playlist(content);
+            for item in xspf_items {
                 list.extend(check(&item.url));
+                list.extend(check(&item.identifier));
             }
         }
         None =>{
-            match content.to_lowercase().find("[playlist]"){
-                Some(_) => {
-                    let pls_items = pls::decode_playlist(content);
+            match content.to_lowercase().find("<asx"){
+                Some(_)=>{
+                    let pls_items = asx::decode_playlist(content);
                     for item in pls_items {
                         list.extend(check(&item.url));
                     }
                 }
-                None => {
-                    let m3u_items = m3u::decode_playlist(content);
-                    for item in m3u_items {
-                        list.extend(check(&item.url));
+                None =>{
+                    match content.to_lowercase().find("[playlist]"){
+                        Some(_) => {
+                            let pls_items = pls::decode_playlist(content);
+                            for item in pls_items {
+                                list.extend(check(&item.url));
+                            }
+                        }
+                        None => {
+                            let m3u_items = m3u::decode_playlist(content);
+                            for item in m3u_items {
+                                list.extend(check(&item.url));
+                            }
+                        }
                     }
                 }
             }
