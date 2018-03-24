@@ -10,3 +10,4 @@ diesel = { version = "1.1.1", features = ["mysql","chrono"] }
 chrono = "*"
 threadpool = "1.7.1"
 quick-xml = "*"
+playlist-decoder = "*"

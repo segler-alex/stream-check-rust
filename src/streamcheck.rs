@@ -1,9 +1,7 @@
 #![allow(non_snake_case)]
 use request::Request;
-use pls;
-use m3u;
-use asx;
-use xspf;
+
+use playlist_decoder;
 
 #[derive(Debug)]
 pub struct StreamInfo{
@@ -126,40 +124,9 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
 fn decode_playlist(content: &str) -> Vec<StreamInfo> {
     let mut list = vec![];
 
-    match content.to_lowercase().find("<playlist"){
-        Some(_)=>{
-            let xspf_items = xspf::decode_playlist(content);
-            for item in xspf_items {
-                list.extend(check(&item.url));
-                list.extend(check(&item.identifier));
-            }
-        }
-        None =>{
-            match content.to_lowercase().find("<asx"){
-                Some(_)=>{
-                    let pls_items = asx::decode_playlist(content);
-                    for item in pls_items {
-                        list.extend(check(&item.url));
-                    }
-                }
-                None =>{
-                    match content.to_lowercase().find("[playlist]"){
-                        Some(_) => {
-                            let pls_items = pls::decode_playlist(content);
-                            for item in pls_items {
-                                list.extend(check(&item.url));
-                            }
-                        }
-                        None => {
-                            let m3u_items = m3u::decode_playlist(content);
-                            for item in m3u_items {
-                                list.extend(check(&item.url));
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    let urls = playlist_decoder::decode(content);
+    for url in urls{
+        list.extend(check(&url));
     }
     
     list

@@ -2,6 +2,7 @@ extern crate chrono;
 extern crate native_tls;
 extern crate threadpool;
 extern crate url;
+extern crate playlist_decoder;
 
 extern crate quick_xml;
 
@@ -18,10 +19,6 @@ use threadpool::ThreadPool;
 mod request;
 mod db;
 mod streamcheck;
-mod pls;
-mod m3u;
-mod asx;
-mod xspf;
 
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url);
@@ -34,15 +31,11 @@ fn dbcheck() {
     let conn = db::establish_connection();
     let stations = db::get_stations(conn, 50);
 
-    let n_workers = 1;
+    let n_workers = 10;
     let pool = ThreadPool::new(n_workers);
-    println!("dbcheck()");
     for station in stations {
-        println!("queued {}", station.Name);
         pool.execute(move || {
-            println!("started {} - {}", station.Name, station.Url);
             debugcheck(&station.Url);
-            println!("finished {}\n", station.Name);
         });
     }
     pool.join();
