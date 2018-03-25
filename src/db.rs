@@ -11,7 +11,6 @@ use models::*;
 
 pub fn get_stations(conn: MysqlConnection, itemcount: i64) -> Vec<StationItem> {
     use schema::Station::dsl::*;
-    use diesel::dsl::*;
     let mut list = vec![];
     
     let result = Station

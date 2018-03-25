@@ -44,7 +44,6 @@ pub struct HttpHeaders {
 }
 
 pub struct Request {
-    url: Url,
     pub info: HttpHeaders,
     readable: Box<Read>,
     content_read_done: bool,
@@ -78,7 +77,6 @@ impl Request {
             Request::send_request(&mut stream, &host, url.path())?;
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
-                url: url.clone(),
                 info: header,
                 readable: Box::new(stream),
                 content_read_done: false,
@@ -88,7 +86,6 @@ impl Request {
             Request::send_request(&mut stream, &host, url.path())?;
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
-                url: url.clone(),
                 info: header,
                 readable: Box::new(stream),
                 content_read_done: false,
