@@ -205,16 +205,18 @@ fn decode_playlist(url_str: &str, content: &str) -> Vec<BoxResult<StreamInfo>> {
         Ok(base_url) => {
             let urls = playlist_decoder::decode(content);
             for url in urls {
-                let abs_url = base_url.join(&url);
-                match abs_url {
-                    Ok(abs_url) => {
-                        list.extend(check(&abs_url.as_str()));
-                    }
-                    Err(err) => {
-                        list.push(Err(Box::new(StreamCheckError::new(
-                            url_str,
-                            &err.to_string(),
-                        ))));
+                if url.trim() != "" {
+                    let abs_url = base_url.join(&url);
+                    match abs_url {
+                        Ok(abs_url) => {
+                            list.extend(check(&abs_url.as_str()));
+                        }
+                        Err(err) => {
+                            list.push(Err(Box::new(StreamCheckError::new(
+                                url_str,
+                                &err.to_string(),
+                            ))));
+                        }
                     }
                 }
             }

@@ -51,7 +51,7 @@ pub struct Request {
 }
 
 use std::time::Duration;
-use std::net::{ToSocketAddrs};
+use std::net::ToSocketAddrs;
 
 impl Request {
     pub fn new(url_str: &str) -> BoxResult<Request> {
@@ -102,18 +102,43 @@ impl Request {
         }
         self.content_read_done = true;
 
-        let content_length: usize = self.info
+        let content_length = self.info
             .headers
             .get("content-length")
             .unwrap_or(&String::from(""))
-            .parse()
-            .unwrap_or(10000);
+            .parse();
+        match content_length {
+            Ok(content_length) => {
+                let mut buffer = vec![0; content_length];
+                self.readable.read_exact(&mut buffer)?;
+                let out = String::from_utf8(buffer)?;
+                self.content = out;
+                return Ok(());
+            }
+            Err(_) => {
+                let mut result_buffer = vec![];
+                loop {
+                    let mut buffer = vec![0; 10000];
+                    let result = self.readable.read(&mut buffer);
 
-        let mut buffer = vec![0; content_length];
-        self.readable.read_exact(&mut buffer)?;
-        let out = String::from_utf8(buffer)?;
-        self.content = out;
-        return Ok(());
+                    match result {
+                        Ok(bytes) => {
+                            if bytes == 0 {
+                                break;
+                            } else {
+                                result_buffer.extend(buffer[0..bytes].iter());
+                            }
+                        }
+                        Err(err) => {
+                            println!("err {}", err);
+                        }
+                    }
+                }
+                let out = String::from_utf8(result_buffer)?;
+                self.content = out;
+                return Ok(());
+            }
+        }
     }
 
     pub fn get_content<'a>(&'a self) -> &'a str {
