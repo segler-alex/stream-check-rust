@@ -132,12 +132,19 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                     }
                 }
                 if is_playlist {
-                    request.read_content();
-                    let playlist = decode_playlist(url, request.get_content());
-                    if playlist.len() == 0 {
-                        list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
-                    } else {
-                        list.extend(playlist);
+                    let read_result = request.read_content();
+                    match read_result {
+                        Ok(_)=>{
+                            let playlist = decode_playlist(url, request.get_content());
+                            if playlist.len() == 0 {
+                                list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
+                            } else {
+                                list.extend(playlist);
+                            }
+                        }
+                        Err(err)=>{
+                            list.push(Err(Box::new(StreamCheckError::new(url, &err.to_string()))));
+                        }
                     }
                 } else if is_stream {
                     let headers = request.info.headers;

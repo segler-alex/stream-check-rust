@@ -96,9 +96,9 @@ impl Request {
         }
     }
 
-    pub fn read_content(&mut self) {
+    pub fn read_content(&mut self) -> BoxResult<()> {
         if self.content_read_done {
-            return;
+            return Ok(());
         }
         self.content_read_done = true;
 
@@ -110,21 +110,10 @@ impl Request {
             .unwrap_or(10000);
 
         let mut buffer = vec![0; content_length];
-        let read_result = self.readable.read_exact(&mut buffer);
-        match read_result {
-            Ok(_)=>{}
-            Err(e)=>{
-                println!("readexact error {}", e);
-            }
-        }
-
-        let out = String::from_utf8(buffer);
-        match out {
-            Ok(out) => {
-                self.content = out;
-            }
-            _ => {}
-        }
+        self.readable.read_exact(&mut buffer)?;
+        let out = String::from_utf8(buffer)?;
+        self.content = out;
+        return Ok(());
     }
 
     pub fn get_content<'a>(&'a self) -> &'a str {
