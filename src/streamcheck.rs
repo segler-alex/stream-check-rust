@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use request::Request;
 
+use std::fmt;
 use playlist_decoder;
 
 #[derive(Debug)]
@@ -15,6 +16,36 @@ pub struct StreamInfo{
     pub Sampling: u32,
     pub Codec: String,
 }
+
+#[derive(Debug)]
+struct StreamCheckError {
+    url: String,
+    details: String,
+}
+
+impl StreamCheckError {
+    fn new(url: &str, msg: &str) -> StreamCheckError {
+        StreamCheckError {
+            url: url.to_string(),
+            details: msg.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for StreamCheckError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for StreamCheckError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
+use std::error::Error;
+type BoxResult<T> = Result<T, Box<Error>>;
 
 fn type_is_m3u(content_type: &str) -> bool {
     return content_type == "application/mpegurl" || content_type == "application/x-mpegurl"
@@ -56,9 +87,9 @@ fn type_is_stream(content_type: &str) -> Option<&str> {
     }
 }
 
-pub fn check(url: &str) -> Vec<StreamInfo> {
+pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
     let request = Request::new(&url);
-    let mut list = vec![];
+    let mut list: Vec<BoxResult<StreamInfo>> = vec![];
     match request {
         Ok(mut request) => {
             if request.info.code >= 200 && request.info.code < 300 {
@@ -75,11 +106,11 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                                 stream_type = String::from(type_is_stream(content_type).unwrap_or(""));
                                 is_stream = true;
                             }else{
-                                println!("unknown content type {}", content_type);
+                                list.push(Err(Box::new(StreamCheckError::new(url, &format!("unknown content type {}", content_type)))));
                             }
                         }
                         None => {
-                            println!("missing content-type in http header");
+                            list.push(Err(Box::new(StreamCheckError::new(url, "Missing content-type in http header"))));
                         }
                     }
                 }
@@ -87,9 +118,10 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                     request.read_content();
                     let playlist = decode_playlist(request.get_content());
                     if playlist.len() == 0{
-                        println!("Empty playlist ({})", url);
+                        list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
+                    } else {
+                        list.extend(playlist);
                     }
-                    list.extend(playlist);
                 }else if is_stream {
                     let stream = StreamInfo{
                         Url: String::from(url),
@@ -102,7 +134,7 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                         Sampling: request.info.headers.get("icy-sr").unwrap_or(&String::from("")).parse().unwrap_or(0),
                         Codec: stream_type,
                     };
-                    list.push(stream);
+                    list.push(Ok(stream));
                 }
             } else if request.info.code >= 300 && request.info.code < 400 {
                 let location = request.info.headers.get("location");
@@ -113,15 +145,15 @@ pub fn check(url: &str) -> Vec<StreamInfo> {
                     None => {}
                 }
             } else {
-                println!("illegal http status code {}", request.info.code);
+                list.push(Err(Box::new(StreamCheckError::new(url, &format!("illegal http status code {}", request.info.code)))));
             }
         }
-        Err(err) => println!("Connection error: {} - {}", url, err),
+        Err(err) => list.push(Err(Box::new(StreamCheckError::new(url,&err.to_string())))),
     }
     list
 }
 
-fn decode_playlist(content: &str) -> Vec<StreamInfo> {
+fn decode_playlist(content: &str) -> Vec<BoxResult<StreamInfo>> {
     let mut list = vec![];
 
     let urls = playlist_decoder::decode(content);
