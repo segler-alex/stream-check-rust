@@ -3,6 +3,7 @@ use request::Request;
 
 use std::fmt;
 use playlist_decoder;
+use url::Url;
 
 #[derive(Debug)]
 pub struct StreamInfo{
@@ -116,7 +117,7 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                 }
                 if is_playlist {
                     request.read_content();
-                    let playlist = decode_playlist(request.get_content());
+                    let playlist = decode_playlist(url, request.get_content());
                     if playlist.len() == 0{
                         list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
                     } else {
@@ -153,42 +154,29 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
     list
 }
 
-fn decode_playlist(content: &str) -> Vec<BoxResult<StreamInfo>> {
+fn decode_playlist(url_str:&str, content: &str) -> Vec<BoxResult<StreamInfo>> {
     let mut list = vec![];
-
-    let urls = playlist_decoder::decode(content);
-    for url in urls{
-        list.extend(check(&url));
+    let base_url = Url::parse(url_str);
+    match base_url{
+        Ok(base_url) => {
+            let urls = playlist_decoder::decode(content);
+            for url in urls{
+                let abs_url = base_url.join(&url);
+                match abs_url{
+                    Ok(abs_url)=>{
+                        println!("base='{}' + src='{}' = '{}'", base_url, url, abs_url);
+                        list.extend(check(&abs_url.as_str()));
+                    }
+                    Err(err)=>{
+                        list.push(Err(Box::new(StreamCheckError::new(url_str,&err.to_string()))));
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            list.push(Err(Box::new(StreamCheckError::new(url_str,&err.to_string()))));
+        }
     }
     
     list
 }
-
-/*fn getRemoteDirUrl(url: &str) {
-    $parsed_url = parse_url($url);
-    if ($parsed_url) {
-        $scheme = isset($parsed_url['scheme']) ? $parsed_url['scheme'].'://' : '';
-        $host = isset($parsed_url['host']) ? $parsed_url['host'] : '';
-        $port = isset($parsed_url['port']) ? ':'.$parsed_url['port'] : '';
-        $path = isset($parsed_url['path']) ? dirname($parsed_url['path']) : '';
-        return "$scheme$host$port$path";
-    }
-
-    return null;
-}
-
-fn fixPlaylistItem(url: &str, playlistItem: &str) -> BoxResult<String> {
-    if (hasCorrectScheme(playlistItem)){
-        let remoteDir = getRemoteDirUrl(url);
-        if (remoteDir != false){
-            Ok(Box::new(format!("{}/{}",remoteDir,playlistItem)))
-        }
-        Err()
-    }
-    Ok(playlistItem)
-}*/
-
-/*fn hasCorrectScheme(url: &str) -> bool {
-    let lower = url.to_lowercase();
-    return lower.starts_with("http://") || lower.starts_with("https://");
-}*/
