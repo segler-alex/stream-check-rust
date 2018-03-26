@@ -70,6 +70,7 @@ impl Request {
                 .ok_or(RequestError::new("unable to resolve hostname"))?,
             Duration::from_millis(5 * 1000),
         )?;
+        stream.set_read_timeout(Some(Duration::from_secs(5)))?;
 
         if url.scheme() == "https" {
             let connector = TlsConnector::builder()?.build()?;
@@ -133,6 +134,10 @@ impl Request {
                             println!("err {}", err);
                         }
                     }
+
+                    if result_buffer.len() > 10000 {
+                        break;
+                    }
                 }
                 let out = String::from_utf8(result_buffer)?;
                 self.content = out;
@@ -167,6 +172,9 @@ impl Request {
                 _ => {
                     break;
                 }
+            }
+            if bytes.len() > 10000 {
+                break;
             }
         }
         let out = String::from_utf8_lossy(&bytes);
