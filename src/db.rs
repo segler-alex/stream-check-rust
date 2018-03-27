@@ -9,7 +9,7 @@ pub fn establish_connection() -> MysqlConnection {
 
 use models::*;
 
-pub fn get_stations(conn: MysqlConnection, itemcount: i64) -> Vec<StationItem> {
+pub fn get_stations(conn: &MysqlConnection, itemcount: i64) -> Vec<StationItem> {
     use schema::Station::dsl::*;
     let mut list = vec![];
     
@@ -17,7 +17,7 @@ pub fn get_stations(conn: MysqlConnection, itemcount: i64) -> Vec<StationItem> {
         .limit(itemcount)
         //.filter(LastCheckTime.gt(now))
         .order(LastCheckTime.asc())
-        .load::<StationItem>(&conn)
+        .load::<StationItem>(conn)
         .expect("aaa");
 
     for station in result {
