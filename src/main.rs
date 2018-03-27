@@ -36,9 +36,9 @@ fn debugcheck(url: &str) {
     }
 }
 
-fn dbcheck(concurrency: usize) {
+fn dbcheck(concurrency: usize, stations_count: u32) {
     let conn = db::establish_connection();
-    let stations = db::get_stations(&conn, 50);
+    let stations = db::get_stations(&conn, stations_count);
 
     let pool = ThreadPool::new(concurrency);
     for station in stations {
@@ -46,8 +46,6 @@ fn dbcheck(concurrency: usize) {
             let items = streamcheck::check(&station.Url);
             let mut working = false;
             for item in items.iter() {
-                println!("{:?}", item);
-
                 match item{
                     &Ok(ref item)=>{
                         let my_uuid = Uuid::new_v4();
@@ -66,6 +64,7 @@ fn dbcheck(concurrency: usize) {
                             .execute(&conn)
                             .expect("Error saving new post");
                         working = true;
+                        println!("OK {} - {:?}", station.StationUuid, item);
                         break;
                     }
                     &Err(_)=>{
@@ -75,7 +74,7 @@ fn dbcheck(concurrency: usize) {
             }
 
             if !working{
-                 let my_uuid = Uuid::new_v4();
+                let my_uuid = Uuid::new_v4();
                 let new_post = NewStationCheckItem {
                     StationUuid: &station.StationUuid,
                     CheckUuid: &my_uuid.to_string(),
@@ -90,6 +89,7 @@ fn dbcheck(concurrency: usize) {
                     .values(&new_post)
                     .execute(&conn)
                     .expect("Error saving new post");
+                println!("FAIL {}", station.StationUuid);
             }
         });
     }
@@ -101,13 +101,17 @@ fn main() {
         .unwrap_or(String::from("10"))
         .parse()
         .expect("CONCURRENCY is not number");
+    let check_stations: u32 = env::var("STATIONS")
+        .unwrap_or(String::from("50"))
+        .parse()
+        .expect("CONCURRENCY is not number");
 
     match env::args().nth(1) {
         Some(url) => {
             debugcheck(&url);
         }
         None => {
-            dbcheck(concurrency);
+            dbcheck(concurrency, check_stations);
         }
     };
 }
