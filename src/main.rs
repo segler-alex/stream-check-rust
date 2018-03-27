@@ -1,8 +1,8 @@
 extern crate chrono;
 extern crate native_tls;
+extern crate playlist_decoder;
 extern crate threadpool;
 extern crate url;
-extern crate playlist_decoder;
 
 extern crate quick_xml;
 
@@ -11,13 +11,13 @@ extern crate diesel;
 
 use std::env;
 
-pub mod schema;
 pub mod models;
+pub mod schema;
 
 use threadpool::ThreadPool;
 
-mod request;
 mod db;
+mod request;
 mod streamcheck;
 
 fn debugcheck(url: &str) {
@@ -27,12 +27,11 @@ fn debugcheck(url: &str) {
     }
 }
 
-fn dbcheck() {
+fn dbcheck(concurrency: usize) {
     let conn = db::establish_connection();
     let stations = db::get_stations(conn, 50);
 
-    let n_workers = 10;
-    let pool = ThreadPool::new(n_workers);
+    let pool = ThreadPool::new(concurrency);
     for station in stations {
         pool.execute(move || {
             debugcheck(&station.Url);
@@ -42,12 +41,17 @@ fn dbcheck() {
 }
 
 fn main() {
+    let concurrency: usize = env::var("CONCURRENCY")
+        .unwrap_or(String::from("10"))
+        .parse()
+        .expect("threads is not number");
+
     match env::args().nth(1) {
         Some(url) => {
             debugcheck(&url);
         }
         None => {
-            dbcheck();
+            dbcheck(concurrency);
         }
     };
 }
