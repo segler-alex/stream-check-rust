@@ -4,6 +4,7 @@ extern crate playlist_decoder;
 extern crate threadpool;
 extern crate url;
 extern crate uuid;
+extern crate hostname;
 
 extern crate quick_xml;
 
@@ -28,6 +29,9 @@ mod streamcheck;
 use diesel::prelude::*;
 use self::models::NewStationCheckItem;
 use uuid::Uuid;
+use std::time::Duration;
+use hostname::get_hostname;
+use std::thread;
 
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url);
@@ -36,23 +40,24 @@ fn debugcheck(url: &str) {
     }
 }
 
-fn dbcheck(concurrency: usize, stations_count: u32) {
+fn dbcheck(source: &str, concurrency: usize, stations_count: u32) {
     let conn = db::establish_connection();
     let stations = db::get_stations(&conn, stations_count);
 
     let pool = ThreadPool::new(concurrency);
     for station in stations {
+        let source = String::from(source);
         pool.execute(move || {
             let items = streamcheck::check(&station.Url);
             let mut working = false;
             for item in items.iter() {
-                match item{
-                    &Ok(ref item)=>{
+                match item {
+                    &Ok(ref item) => {
                         let my_uuid = Uuid::new_v4();
                         let new_post = NewStationCheckItem {
                             StationUuid: &station.StationUuid,
                             CheckUuid: &my_uuid.to_string(),
-                            Source: "",
+                            Source: &source,
                             Codec: &item.Codec.clone(),
                             Bitrate: item.Bitrate as i32,
                             Hls: false,
@@ -67,18 +72,16 @@ fn dbcheck(concurrency: usize, stations_count: u32) {
                         println!("OK {} - {:?}", station.StationUuid, item);
                         break;
                     }
-                    &Err(_)=>{
-
-                    }
+                    &Err(_) => {}
                 }
             }
 
-            if !working{
+            if !working {
                 let my_uuid = Uuid::new_v4();
                 let new_post = NewStationCheckItem {
                     StationUuid: &station.StationUuid,
                     CheckUuid: &my_uuid.to_string(),
-                    Source: "",
+                    Source: &source,
                     Codec: "",
                     Bitrate: 0,
                     Hls: false,
@@ -105,13 +108,37 @@ fn main() {
         .unwrap_or(String::from("50"))
         .parse()
         .expect("CONCURRENCY is not number");
+    let do_loop: bool = env::var("LOOP")
+        .unwrap_or(String::from("false"))
+        .parse()
+        .expect("LOOP is not bool");
+    let pause_seconds: u64 = env::var("PAUSE_SECONDS")
+        .unwrap_or(String::from("10"))
+        .parse()
+        .expect("PAUSE_SECONDS is not u64");
+    let source: String = env::var("SOURCE")
+        .unwrap_or(String::from(get_hostname().unwrap_or("".to_string())));
+    
+    println!("LOOP          : {}", do_loop);
+    println!("SOURCE        : {}", source);
+    println!("CONCURRENCY   : {}", concurrency);
+    println!("STATIONS      : {}", check_stations);
+    println!("PAUSE_SECONDS : {}", pause_seconds);
 
-    match env::args().nth(1) {
-        Some(url) => {
-            debugcheck(&url);
+    loop {
+        match env::args().nth(1) {
+            Some(url) => {
+                debugcheck(&url);
+            }
+            None => {
+                dbcheck(&source, concurrency, check_stations);
+            }
+        };
+        if !do_loop{
+            break;
         }
-        None => {
-            dbcheck(concurrency, check_stations);
-        }
-    };
+
+        println!("Waiting.. ({} secs)", pause_seconds);
+        thread::sleep(Duration::from_secs(pause_seconds));
+    }
 }

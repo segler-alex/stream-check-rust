@@ -14,4 +14,5 @@ playlist-decoder = "*"
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
+hostname = "*"
 uuid = { version = "0.6", features = ["v4"] }
