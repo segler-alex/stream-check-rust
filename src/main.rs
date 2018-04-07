@@ -20,6 +20,8 @@ use std::time::Duration;
 use hostname::get_hostname;
 use std::thread;
 
+use models::StationCheckItemNew;
+
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url);
     for item in items {
@@ -27,29 +29,31 @@ fn debugcheck(url: &str) {
     }
 }
 
-fn dbcheck(source: &str, concurrency: usize, stations_count: u32) {
-    let conn = db::new();
+fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32) {
+    let conn = db::new(connection_str);
     if let Ok(conn) = conn {
-        let stations = db::get_stations(&conn, stations_count);
+        let stations = db::get_stations_to_check(&conn, 24, stations_count);
 
         let pool = ThreadPool::new(concurrency);
         for station in stations {
-            //let source = String::from(source);
+            let source = String::from(source);
+            let conn = conn.clone();
             pool.execute(move || {
                 let items = streamcheck::check(&station.url);
                 let mut working = false;
                 for item in items.iter() {
                     match item {
                         &Ok(ref item) => {
-                            /*let new_post = NewStationCheckItem {
-                                StationUuid: &station.StationUuid,
-                                CheckUuid: &my_uuid.to_string(),
-                                Source: &source,
-                                Codec: &item.Codec.clone(),
-                                Bitrate: item.Bitrate as i32,
-                                Hls: false,
-                                CheckOK: true,
-                            };*/
+                            let new_item = StationCheckItemNew {
+                                station_uuid: station.uuid.clone(),
+                                source: source.clone(),
+                                codec: item.Codec.clone(),
+                                bitrate: item.Bitrate as i32,
+                                hls: false,
+                                check_ok: true,
+                            };
+                            db::insert_check(&conn, &new_item);
+                            db::update_station(&conn, &new_item);
                             working = true;
                             println!("OK {} - {:?}", station.uuid, item);
                             break;
@@ -59,17 +63,16 @@ fn dbcheck(source: &str, concurrency: usize, stations_count: u32) {
                 }
 
                 if !working {
-                    /*let my_uuid = Uuid::new_v4();
-                    let new_post = NewStationCheckItem {
-                        StationUuid: &station.StationUuid,
-                        CheckUuid: &my_uuid.to_string(),
-                        Source: &source,
-                        Codec: "",
-                        Bitrate: 0,
-                        Hls: false,
-                        CheckOK: false,
+                    let new_item = StationCheckItemNew {
+                        station_uuid: station.uuid.clone(),
+                        source: source.clone(),
+                        codec: "".to_string(),
+                        bitrate: 0,
+                        hls: false,
+                        check_ok: false,
                     };
-                    */
+                    db::insert_check(&conn, &new_item);
+                    db::update_station(&conn, &new_item);
                     println!("FAIL {}", station.uuid);
                 }
             });
@@ -97,7 +100,9 @@ fn main() {
         .expect("PAUSE_SECONDS is not u64");
     let source: String = env::var("SOURCE")
         .unwrap_or(String::from(get_hostname().unwrap_or("".to_string())));
-    
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
+
+    println!("DATABASE_URL  : {}", database_url);
     println!("LOOP          : {}", do_loop);
     println!("SOURCE        : {}", source);
     println!("CONCURRENCY   : {}", concurrency);
@@ -110,7 +115,7 @@ fn main() {
                 debugcheck(&url);
             }
             None => {
-                dbcheck(&source, concurrency, check_stations);
+                dbcheck(&database_url, &source, concurrency, check_stations);
             }
         };
         if !do_loop{
