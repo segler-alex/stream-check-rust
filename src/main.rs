@@ -1,24 +1,14 @@
-extern crate chrono;
 extern crate native_tls;
 extern crate playlist_decoder;
 extern crate threadpool;
 extern crate url;
-extern crate uuid;
 extern crate hostname;
-
+extern crate mysql;
 extern crate quick_xml;
-
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-
-#[macro_use]
-extern crate diesel;
 
 use std::env;
 
 pub mod models;
-pub mod schema;
 
 use threadpool::ThreadPool;
 
@@ -26,9 +16,6 @@ mod db;
 mod request;
 mod streamcheck;
 
-use diesel::prelude::*;
-use self::models::NewStationCheckItem;
-use uuid::Uuid;
 use std::time::Duration;
 use hostname::get_hostname;
 use std::thread;
@@ -41,62 +28,54 @@ fn debugcheck(url: &str) {
 }
 
 fn dbcheck(source: &str, concurrency: usize, stations_count: u32) {
-    let conn = db::establish_connection();
-    let stations = db::get_stations(&conn, stations_count);
+    let conn = db::new();
+    if let Ok(conn) = conn {
+        let stations = db::get_stations(&conn, stations_count);
 
-    let pool = ThreadPool::new(concurrency);
-    for station in stations {
-        let source = String::from(source);
-        pool.execute(move || {
-            let items = streamcheck::check(&station.Url);
-            let mut working = false;
-            for item in items.iter() {
-                match item {
-                    &Ok(ref item) => {
-                        let my_uuid = Uuid::new_v4();
-                        let new_post = NewStationCheckItem {
-                            StationUuid: &station.StationUuid,
-                            CheckUuid: &my_uuid.to_string(),
-                            Source: &source,
-                            Codec: &item.Codec.clone(),
-                            Bitrate: item.Bitrate as i32,
-                            Hls: false,
-                            CheckOK: true,
-                        };
-                        let conn = db::establish_connection();
-                        diesel::insert_into(schema::StationCheck::table)
-                            .values(&new_post)
-                            .execute(&conn)
-                            .expect("Error saving new post");
-                        working = true;
-                        println!("OK {} - {:?}", station.StationUuid, item);
-                        break;
+        let pool = ThreadPool::new(concurrency);
+        for station in stations {
+            //let source = String::from(source);
+            pool.execute(move || {
+                let items = streamcheck::check(&station.url);
+                let mut working = false;
+                for item in items.iter() {
+                    match item {
+                        &Ok(ref item) => {
+                            /*let new_post = NewStationCheckItem {
+                                StationUuid: &station.StationUuid,
+                                CheckUuid: &my_uuid.to_string(),
+                                Source: &source,
+                                Codec: &item.Codec.clone(),
+                                Bitrate: item.Bitrate as i32,
+                                Hls: false,
+                                CheckOK: true,
+                            };*/
+                            working = true;
+                            println!("OK {} - {:?}", station.uuid, item);
+                            break;
+                        }
+                        &Err(_) => {}
                     }
-                    &Err(_) => {}
                 }
-            }
 
-            if !working {
-                let my_uuid = Uuid::new_v4();
-                let new_post = NewStationCheckItem {
-                    StationUuid: &station.StationUuid,
-                    CheckUuid: &my_uuid.to_string(),
-                    Source: &source,
-                    Codec: "",
-                    Bitrate: 0,
-                    Hls: false,
-                    CheckOK: false,
-                };
-                let conn = db::establish_connection();
-                diesel::insert_into(schema::StationCheck::table)
-                    .values(&new_post)
-                    .execute(&conn)
-                    .expect("Error saving new post");
-                println!("FAIL {}", station.StationUuid);
-            }
-        });
+                if !working {
+                    /*let my_uuid = Uuid::new_v4();
+                    let new_post = NewStationCheckItem {
+                        StationUuid: &station.StationUuid,
+                        CheckUuid: &my_uuid.to_string(),
+                        Source: &source,
+                        Codec: "",
+                        Bitrate: 0,
+                        Hls: false,
+                        CheckOK: false,
+                    };
+                    */
+                    println!("FAIL {}", station.uuid);
+                }
+            });
+        }
+        pool.join();
     }
-    pool.join();
 }
 
 fn main() {

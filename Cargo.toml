@@ -6,13 +6,8 @@ authors = ["segler <segler_alex@web.de>"]
 [dependencies]
 url = "1.7.0"
 native-tls = "0.1.5"
-diesel = { version = "1.1.1", features = ["mysql","chrono"] }
-chrono = { version = "*", features = ["serde"] }
 threadpool = "1.7.1"
 quick-xml = "*"
 playlist-decoder = "*"
-serde = "*"
-serde_derive = "*"
-serde_json = "*"
 hostname = "*"
-uuid = { version = "0.6", features = ["v4"] }
+mysql = "*"

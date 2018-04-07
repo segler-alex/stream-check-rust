@@ -1,27 +1,37 @@
-use diesel::prelude::*;
 use std::env;
+use std::error::Error;
+use mysql;
+use models::StationItem;
 
-pub fn establish_connection() -> MysqlConnection {
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    MysqlConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
+pub fn get_stations(pool: &mysql::Pool, itemcount: u32) -> Vec<StationItem> {
+    let query = format!("SELECT StationID,StationUuid,Name,Url FROM Station WHERE LastCheckOkTime < NOW() - INTERVAL 1 DAY ORDER BY RAND() ASC LIMIT {}", itemcount);
+    get_stations_query(pool, query)
 }
 
-use models::*;
-
-pub fn get_stations(conn: &MysqlConnection, itemcount: u32) -> Vec<StationItem> {
-    use schema::Station::dsl::*;
-    let mut list = vec![];
-    
-    let result = Station
-        .limit(itemcount as i64)
-        //.filter(LastCheckTime.gt(now))
-        .order(LastCheckTime.asc())
-        .load::<StationItem>(conn)
-        .expect("aaa");
-
-    for station in result {
-        list.push(station.clone());
+fn get_stations_query(pool: &mysql::Pool, query: String) -> Vec<StationItem> {
+    let mut stations: Vec<StationItem> = vec![];
+    let results = pool.prep_exec(query, ());
+    for result in results {
+        for row_ in result {
+            let mut row = row_.unwrap();
+            let s = StationItem {
+                id:              row.take("StationID").unwrap(),
+                uuid:            row.take("StationUuid").unwrap_or("".to_string()),
+                name:            row.take("Name").unwrap_or("".to_string()),
+                url:             row.take("Url").unwrap_or("".to_string()),
+            };
+            stations.push(s);
+        }
     }
-    list
+
+    stations
+}
+
+pub fn new() -> Result<mysql::Pool, Box<Error>> {
+    let database_url = env::var("DATABASE_URL")?;
+    let connection_string = database_url.clone();
+    println!("Connection string: {}", connection_string);
+
+    let pool = mysql::Pool::new(connection_string)?;
+    Ok(pool)
 }
