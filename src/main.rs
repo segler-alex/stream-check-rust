@@ -51,6 +51,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                                 bitrate: item.Bitrate as i32,
                                 hls: false,
                                 check_ok: true,
+                                url: item.Url.clone(),
                             };
                             db::insert_check(&conn, &new_item);
                             db::update_station(&conn, &new_item);
@@ -70,6 +71,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                         bitrate: 0,
                         hls: false,
                         check_ok: false,
+                        url: "".to_string(),
                     };
                     db::insert_check(&conn, &new_item);
                     db::update_station(&conn, &new_item);

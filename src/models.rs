@@ -27,4 +27,5 @@ pub struct StationCheckItemNew {
     pub bitrate: i32,
     pub hls: bool,
     pub check_ok: bool,
+    pub url: String,
 }

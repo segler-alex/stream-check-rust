@@ -28,9 +28,9 @@ fn get_stations_query(pool: &mysql::Pool, query: String) -> Vec<StationItem> {
 }
 
 pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew){
-    let query = String::from("INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime) VALUES(?,UUID(),?,?,?,?,?,NOW())");
+    let query = String::from("INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)");
     let mut my_stmt = pool.prepare(query).unwrap();
-    let result = my_stmt.execute((&item.station_uuid,&item.source,&item.codec,&item.bitrate,&item.hls,&item.check_ok));
+    let result = my_stmt.execute((&item.station_uuid,&item.source,&item.codec,&item.bitrate,&item.hls,&item.check_ok,&item.url));
     match result {
         Ok(_) => {},
         Err(err) => {println!("{}",err);}
@@ -38,12 +38,12 @@ pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew){
 }
 
 pub fn update_station(pool: &mysql::Pool,item: &StationCheckItemNew){
-    let mut query: String = String::from("UPDATE Station SET LastCheckTime=NOW(),LastCheckOkTime=NOW(),LastCheckOk=? WHERE StationUuid=?");
+    let mut query: String = String::from("UPDATE Station SET LastCheckTime=NOW(),LastCheckOkTime=NOW(),LastCheckOk=?,Codec=?,Bitrate=?,UrlCache=? WHERE StationUuid=?");
     if !item.check_ok{
-        query = format!("UPDATE Station SET LastCheckTime=NOW(),LastCheckOk=? WHERE StationUuid=?");
+        query = format!("UPDATE Station SET LastCheckTime=NOW(),LastCheckOk=?,Codec=?,Bitrate=?,UrlCache=? WHERE StationUuid=?");
     }
     let mut my_stmt = pool.prepare(query).unwrap();
-    let result = my_stmt.execute((&item.check_ok,&item.station_uuid));
+    let result = my_stmt.execute((&item.check_ok,&item.station_uuid,&item.codec,&item.bitrate,&item.url));
     match result {
         Ok(_) => {},
         Err(err) => {println!("{}",err);}
