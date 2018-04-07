@@ -4,7 +4,7 @@ use models::StationItem;
 use models::StationCheckItemNew;
 
 pub fn get_stations_to_check(pool: &mysql::Pool, hours: u32, itemcount: u32) -> Vec<StationItem> {
-    let query = format!("SELECT StationID,StationUuid,Name,Url FROM Station WHERE LastCheckOkTime < NOW() - INTERVAL {} HOUR ORDER BY RAND() ASC LIMIT {}", hours, itemcount);
+    let query = format!("SELECT StationID,StationUuid,Name,Url FROM Station WHERE LastCheckTime IS NULL OR LastCheckTime < NOW() - INTERVAL {} HOUR ORDER BY RAND() ASC LIMIT {}", hours, itemcount);
     get_stations_query(pool, query)
 }
 
