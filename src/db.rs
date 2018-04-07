@@ -43,7 +43,7 @@ pub fn update_station(pool: &mysql::Pool,item: &StationCheckItemNew){
         query = format!("UPDATE Station SET LastCheckTime=NOW(),LastCheckOk=?,Codec=?,Bitrate=?,UrlCache=? WHERE StationUuid=?");
     }
     let mut my_stmt = pool.prepare(query).unwrap();
-    let result = my_stmt.execute((&item.check_ok,&item.station_uuid,&item.codec,&item.bitrate,&item.url));
+    let result = my_stmt.execute((&item.check_ok,&item.codec,&item.bitrate,&item.url,&item.station_uuid));
     match result {
         Ok(_) => {},
         Err(err) => {println!("{}",err);}
