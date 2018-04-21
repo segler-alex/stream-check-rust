@@ -49,7 +49,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                                 source: source.clone(),
                                 codec: item.Codec.clone(),
                                 bitrate: item.Bitrate as i32,
-                                hls: false,
+                                hls: item.Hls,
                                 check_ok: true,
                                 url: item.Url.clone(),
                             };

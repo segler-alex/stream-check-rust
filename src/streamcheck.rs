@@ -16,6 +16,7 @@ pub struct StreamInfo {
     pub Bitrate: u32,
     pub Sampling: u32,
     pub Codec: String,
+    pub Hls: bool,
 }
 
 #[derive(Debug)]
@@ -135,11 +136,29 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                     let read_result = request.read_content();
                     match read_result {
                         Ok(_)=>{
-                            let playlist = decode_playlist(url, request.get_content());
-                            if playlist.len() == 0 {
-                                list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
-                            } else {
-                                list.extend(playlist);
+                            let content = request.get_content();
+                            let is_hls = playlist_decoder::is_content_hls(&content);
+                            if is_hls {
+                                let stream = StreamInfo {
+                                    Url: String::from(url),
+                                    Type: String::from(""),
+                                    Name: String::from(""),
+                                    Description: String::from(""),
+                                    Homepage: String::from(""),
+                                    Bitrate: 0,
+                                    Genre: String::from(""),
+                                    Sampling: 0,
+                                    Codec: stream_type,
+                                    Hls: true,
+                                };
+                                list.push(Ok(stream));
+                            }else{
+                                let playlist = decode_playlist(url, &content);
+                                if playlist.len() == 0 {
+                                    list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
+                                } else {
+                                    list.extend(playlist);
+                                }
                             }
                         }
                         Err(err)=>{
@@ -175,6 +194,7 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                             .parse()
                             .unwrap_or(0),
                         Codec: stream_type,
+                        Hls: false,
                     };
                     list.push(Ok(stream));
                 }
