@@ -47,10 +47,10 @@ fn check_for_change(old: &models::StationItem,new: &StationCheckItemNew) -> bool
         println!("  codec    :{}->{}",old.codec,new.codec);
         retval = true;
     }
-    if old.urlcache != new.url{
+    /*if old.urlcache != new.url{
         println!("  url      :{}->{}",old.urlcache,new.url);
         retval = true;
-    }
+    }*/
     retval
 }
 
