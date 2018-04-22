@@ -23,7 +23,7 @@ use std::thread;
 use models::StationCheckItemNew;
 
 fn debugcheck(url: &str) {
-    let items = streamcheck::check(&url);
+    let items = streamcheck::check(&url, true);
     for item in items {
         println!("{:?}", item);
     }
@@ -74,40 +74,48 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
             let source = String::from(source);
             let conn = conn.clone();
             pool.execute(move || {
-                let items = streamcheck::check(&station.url);
+                let mut new_item: StationCheckItemNew = StationCheckItemNew {
+                    station_uuid: station.uuid.clone(),
+                    source: source.clone(),
+                    codec: "".to_string(),
+                    bitrate: 0,
+                    hls: false,
+                    check_ok: false,
+                    url: "".to_string(),
+                };
                 let mut working = false;
-                for item in items.iter() {
-                    match item {
-                        &Ok(ref item) => {
-                            let new_item = StationCheckItemNew {
-                                station_uuid: station.uuid.clone(),
-                                source: source.clone(),
-                                codec: item.Codec.clone(),
-                                bitrate: item.Bitrate as i32,
-                                hls: item.Hls,
-                                check_ok: true,
-                                url: item.Url.clone(),
-                            };
-                            update_station(&conn, &station, &new_item);
-                            working = true;
-                            break;
-                        }
-                        &Err(_) => {}
+                for i in 1..4 {
+                    if i > 1{
+                        println!("TRY {} - {}", i, station.url);
                     }
+                    let items = streamcheck::check(&station.url, false);
+                    for item in items.iter() {
+                        match item {
+                            &Ok(ref item) => {
+                                new_item = StationCheckItemNew {
+                                    station_uuid: station.uuid.clone(),
+                                    source: source.clone(),
+                                    codec: item.Codec.clone(),
+                                    bitrate: item.Bitrate as i32,
+                                    hls: item.Hls,
+                                    check_ok: true,
+                                    url: item.Url.clone(),
+                                };
+                                working = true;
+                                break;
+                            }
+                            &Err(_) => {}
+                        }
+                    }
+
+                    if working {
+                        break;
+                    }
+
+                    thread::sleep(Duration::from_secs(5));
                 }
 
-                if !working {
-                    let new_item = StationCheckItemNew {
-                        station_uuid: station.uuid.clone(),
-                        source: source.clone(),
-                        codec: "".to_string(),
-                        bitrate: 0,
-                        hls: false,
-                        check_ok: false,
-                        url: "".to_string(),
-                    };
-                    update_station(&conn, &station, &new_item);
-                }
+                update_station(&conn, &station, &new_item);
             });
         }
         pool.join();

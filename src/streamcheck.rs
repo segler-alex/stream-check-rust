@@ -98,7 +98,7 @@ fn type_is_stream(content_type: &str) -> Option<&str> {
     }
 }
 
-pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
+pub fn check(url: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
     let request = Request::new(&url, "StreamCheckBot/0.1.0");
     let mut list: Vec<BoxResult<StreamInfo>> = vec![];
     match request {
@@ -153,7 +153,7 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                                 };
                                 list.push(Ok(stream));
                             }else{
-                                let playlist = decode_playlist(url, &content);
+                                let playlist = decode_playlist(url, &content,check_all);
                                 if playlist.len() == 0 {
                                     list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
                                 } else {
@@ -202,7 +202,7 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                 let location = request.info.headers.get("location");
                 match location {
                     Some(location) => {
-                        list.extend(check(location));
+                        list.extend(check(location,check_all));
                     }
                     None => {}
                 }
@@ -218,7 +218,7 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
     list
 }
 
-fn decode_playlist(url_str: &str, content: &str) -> Vec<BoxResult<StreamInfo>> {
+fn decode_playlist(url_str: &str, content: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
     let mut list = vec![];
     let base_url = Url::parse(url_str);
     match base_url {
@@ -229,7 +229,20 @@ fn decode_playlist(url_str: &str, content: &str) -> Vec<BoxResult<StreamInfo>> {
                     let abs_url = base_url.join(&url);
                     match abs_url {
                         Ok(abs_url) => {
-                            list.extend(check(&abs_url.as_str()));
+                            let result = check(&abs_url.as_str(),check_all);
+                            if !check_all{
+                                let mut found = false;
+                                for result_single in result.iter() {
+                                    if result_single.is_ok() {
+                                        found = true;
+                                    }
+                                }
+                                if found{
+                                    list.extend(result);
+                                    break;
+                                }
+                            }
+                            list.extend(result);
                         }
                         Err(err) => {
                             list.push(Err(Box::new(StreamCheckError::new(
