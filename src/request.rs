@@ -48,13 +48,14 @@ pub struct Request {
     readable: Box<Read>,
     content_read_done: bool,
     content: String,
+    agent: String,
 }
 
 use std::time::Duration;
 use std::net::ToSocketAddrs;
 
 impl Request {
-    pub fn new(url_str: &str) -> BoxResult<Request> {
+    pub fn new(url_str: &str, agent: &str) -> BoxResult<Request> {
         let url = Url::parse(url_str)?;
 
         let host = url.host_str()
@@ -82,9 +83,9 @@ impl Request {
             let query = url.query();
             if let Some(query) = query {
                 let full_path = format!("{}?{}",url.path(),query);
-                Request::send_request(&mut stream, &host_str, &full_path)?;
+                Request::send_request(agent, &mut stream, &host_str, &full_path)?;
             }else{
-                Request::send_request(&mut stream, &host_str, url.path())?;
+                Request::send_request(agent, &mut stream, &host_str, url.path())?;
             }
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
@@ -92,6 +93,7 @@ impl Request {
                 readable: Box::new(stream),
                 content_read_done: false,
                 content: String::from(""),
+                agent: String::from(agent),
             })
         } else if url.scheme() == "http" {
             let mut host_str = String::from(host);
@@ -101,9 +103,9 @@ impl Request {
             let query = url.query();
             if let Some(query) = query {
                 let full_path = format!("{}?{}",url.path(),query);
-                Request::send_request(&mut stream, &host_str, &full_path)?;
+                Request::send_request(agent, &mut stream, &host_str, &full_path)?;
             }else{
-                Request::send_request(&mut stream, &host_str, url.path())?;
+                Request::send_request(agent, &mut stream, &host_str, url.path())?;
             }
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
@@ -111,6 +113,7 @@ impl Request {
                 readable: Box::new(stream),
                 content_read_done: false,
                 content: String::from(""),
+                agent: String::from(agent),
             })
         } else {
             Err(Box::new(RequestError::new("unknown scheme")))
@@ -201,10 +204,10 @@ impl Request {
         Ok(out.to_string())
     }
 
-    fn send_request(stream: &mut Write, host: &str, path: &str) -> BoxResult<()> {
+    fn send_request(agent: &str, stream: &mut Write, host: &str, path: &str) -> BoxResult<()> {
         let request_str = format!(
-            "GET {} HTTP/1.0\r\nHost: {}\r\nAccept: */*\r\nConnection: close\r\n\r\n",
-            path, host
+            "GET {} HTTP/1.0\r\nHost: {}\r\nAccept: */*\r\nUser-Agent: {}\r\nConnection: close\r\n\r\n",
+            path, host, agent
         );
         stream.write(request_str.as_bytes())?;
         stream.flush()?;

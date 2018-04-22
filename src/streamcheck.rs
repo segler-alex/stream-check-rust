@@ -99,7 +99,7 @@ fn type_is_stream(content_type: &str) -> Option<&str> {
 }
 
 pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
-    let request = Request::new(&url);
+    let request = Request::new(&url, "StreamCheckBot/0.1.0");
     let mut list: Vec<BoxResult<StreamInfo>> = vec![];
     match request {
         Ok(mut request) => {
