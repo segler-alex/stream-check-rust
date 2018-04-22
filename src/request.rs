@@ -69,9 +69,9 @@ impl Request {
             &addrs_iter
                 .next()
                 .ok_or(RequestError::new("unable to resolve hostname"))?,
-            Duration::from_millis(5 * 1000),
+            Duration::from_millis(10 * 1000),
         )?;
-        stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+        stream.set_read_timeout(Some(Duration::from_secs(10)))?;
 
         if url.scheme() == "https" {
             let connector = TlsConnector::builder()?.build()?;
