@@ -79,7 +79,13 @@ impl Request {
             if port != 443{
                 host_str = format!("{}:{}",host,port);
             }
-            Request::send_request(&mut stream, &host_str, url.path())?;
+            let query = url.query();
+            if let Some(query) = query {
+                let full_path = format!("{}?{}",url.path(),query);
+                Request::send_request(&mut stream, &host_str, &full_path)?;
+            }else{
+                Request::send_request(&mut stream, &host_str, url.path())?;
+            }
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
                 info: header,
@@ -97,7 +103,7 @@ impl Request {
                 let full_path = format!("{}?{}",url.path(),query);
                 Request::send_request(&mut stream, &host_str, &full_path)?;
             }else{
-            Request::send_request(&mut stream, &host_str, url.path())?;
+                Request::send_request(&mut stream, &host_str, url.path())?;
             }
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
