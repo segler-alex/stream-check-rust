@@ -75,7 +75,11 @@ impl Request {
         if url.scheme() == "https" {
             let connector = TlsConnector::builder()?.build()?;
             let mut stream = connector.connect(host, stream)?;
-            Request::send_request(&mut stream, &host, url.path())?;
+            let mut host_str = String::from(host);
+            if port != 443{
+                host_str = format!("{}:{}",host,port);
+            }
+            Request::send_request(&mut stream, &host_str, url.path())?;
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
                 info: header,
@@ -84,7 +88,11 @@ impl Request {
                 content: String::from(""),
             })
         } else if url.scheme() == "http" {
-            Request::send_request(&mut stream, &host, url.path())?;
+            let mut host_str = String::from(host);
+            if port != 80{
+                host_str = format!("{}:{}",host,port);
+            }
+            Request::send_request(&mut stream, &host_str, url.path())?;
             let header = Request::read_request(&mut stream)?;
             Ok(Request {
                 info: header,
