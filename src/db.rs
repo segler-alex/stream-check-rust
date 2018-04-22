@@ -4,7 +4,7 @@ use models::StationItem;
 use models::StationCheckItemNew;
 
 pub fn get_stations_to_check(pool: &mysql::Pool, hours: u32, itemcount: u32) -> Vec<StationItem> {
-    let query = format!("SELECT StationID,StationUuid,Name,Url FROM Station WHERE LastCheckTime IS NULL OR LastCheckTime < NOW() - INTERVAL {} HOUR ORDER BY RAND() ASC LIMIT {}", hours, itemcount);
+    let query = format!("SELECT StationID,StationUuid,Name,Codec,Bitrate,Hls,LastCheckOk,UrlCache,Url FROM Station WHERE LastCheckTime IS NULL OR LastCheckTime < NOW() - INTERVAL {} HOUR LIMIT {}", hours, itemcount);
     get_stations_query(pool, query)
 }
 
@@ -14,11 +14,18 @@ fn get_stations_query(pool: &mysql::Pool, query: String) -> Vec<StationItem> {
     for result in results {
         for row_ in result {
             let mut row = row_.unwrap();
+            let hls: i32 = row.take("Hls").unwrap_or(0);
+            let ok: i32 = row.take("LastCheckOk").unwrap_or(0);
             let s = StationItem {
                 id:              row.take("StationID").unwrap(),
                 uuid:            row.take("StationUuid").unwrap_or("".to_string()),
                 name:            row.take("Name").unwrap_or("".to_string()),
                 url:             row.take("Url").unwrap_or("".to_string()),
+                urlcache:        row.take("UrlCache").unwrap_or("".to_string()),
+                codec:           row.take("Codec").unwrap_or("".to_string()),
+                bitrate:         row.take("Bitrate").unwrap_or(0),
+                hls:             hls != 0,
+                check_ok:        ok != 0,
             };
             stations.push(s);
         }

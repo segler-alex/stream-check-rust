@@ -29,6 +29,41 @@ fn debugcheck(url: &str) {
     }
 }
 
+fn check_for_change(old: &models::StationItem,new: &StationCheckItemNew) -> bool {
+    let mut retval = false;
+    if old.check_ok != new.check_ok{
+        println!("  check_ok :{}->{}",old.check_ok,new.check_ok);
+        retval = true;
+    }
+    if old.hls != new.hls{
+        println!("  hls      :{}->{}",old.hls,new.hls);
+        retval = true;
+    }
+    if old.bitrate != new.bitrate{
+        println!("  bitrate  :{}->{}",old.bitrate,new.bitrate);
+        retval = true;
+    }
+    if old.codec != new.codec{
+        println!("  codec    :{}->{}",old.codec,new.codec);
+        retval = true;
+    }
+    if old.urlcache != new.url{
+        println!("  url      :{}->{}",old.urlcache,new.url);
+        retval = true;
+    }
+    retval
+}
+
+fn update_station(conn: &mysql::Pool, old: &models::StationItem,new_item: &StationCheckItemNew){
+    db::insert_check(&conn, &new_item);
+    db::update_station(&conn, &new_item);
+    if check_for_change(&old,&new_item){
+        println!("CHANGED: {} URL: {}",old.name,old.url);
+        println!("OLD  {:?}", old);
+        println!("NEW  {:?}", new_item);
+    }
+}
+
 fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32) {
     let conn = db::new(connection_str);
     if let Ok(conn) = conn {
@@ -53,10 +88,8 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                                 check_ok: true,
                                 url: item.Url.clone(),
                             };
-                            db::insert_check(&conn, &new_item);
-                            db::update_station(&conn, &new_item);
+                            update_station(&conn, &station, &new_item);
                             working = true;
-                            println!("OK {} - {:?}", station.uuid, item);
                             break;
                         }
                         &Err(_) => {}
@@ -73,9 +106,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                         check_ok: false,
                         url: "".to_string(),
                     };
-                    db::insert_check(&conn, &new_item);
-                    db::update_station(&conn, &new_item);
-                    println!("FAIL {}", station.uuid);
+                    update_station(&conn, &station, &new_item);
                 }
             });
         }

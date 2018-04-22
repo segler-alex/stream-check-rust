@@ -4,6 +4,11 @@ pub struct StationItem {
     pub uuid: String,
     pub name: String,
     pub url: String,
+    pub codec: String,
+    pub bitrate: i32,
+    pub hls: bool,
+    pub check_ok: bool,
+    pub urlcache: String,
 }
 
 #[derive(Clone,Debug)]

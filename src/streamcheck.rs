@@ -148,7 +148,7 @@ pub fn check(url: &str) -> Vec<BoxResult<StreamInfo>> {
                                     Bitrate: 0,
                                     Genre: String::from(""),
                                     Sampling: 0,
-                                    Codec: stream_type,
+                                    Codec: String::from("UNKNOWN"),
                                     Hls: true,
                                 };
                                 list.push(Ok(stream));
