@@ -84,7 +84,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                     url: "".to_string(),
                 };
                 let mut working = false;
-                for i in 1..4 {
+                for i in 1..6 {
                     if i > 1{
                         println!("TRY {} - {}", i, station.url);
                     }
@@ -112,7 +112,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                         break;
                     }
 
-                    thread::sleep(Duration::from_secs(5));
+                    thread::sleep(Duration::from_secs(10));
                 }
 
                 update_station(&conn, &station, &new_item);
