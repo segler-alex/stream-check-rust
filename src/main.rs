@@ -22,6 +22,10 @@ use std::thread;
 
 use models::StationCheckItemNew;
 
+extern crate colored;
+
+use colored::*;
+
 fn debugcheck(url: &str) {
     let items = streamcheck::check(&url, true);
     for item in items {
@@ -29,38 +33,62 @@ fn debugcheck(url: &str) {
     }
 }
 
-fn check_for_change(old: &models::StationItem,new: &StationCheckItemNew) -> bool {
+fn check_for_change(old: &models::StationItem,new: &StationCheckItemNew) -> (bool,String) {
     let mut retval = false;
+    let mut result = String::from("");
+
     if old.check_ok != new.check_ok{
-        println!("  check_ok :{}->{}",old.check_ok,new.check_ok);
+        if new.check_ok{
+            result.push('+');
+            result.red();
+        }else{
+            result.push('-');
+        }
         retval = true;
+    }else{
+        result.push('~');
     }
+    result.push(' ');
+    result.push('\'');
+    result.push_str(&old.name);
+    result.push('\'');
+    result.push(' ');
+    result.push_str(&old.url);
     if old.hls != new.hls{
-        println!("  hls      :{}->{}",old.hls,new.hls);
+        result.push_str(&format!(" hls:{}->{}",old.hls,new.hls));
         retval = true;
     }
     if old.bitrate != new.bitrate{
-        println!("  bitrate  :{}->{}",old.bitrate,new.bitrate);
+        result.push_str(&format!(" bitrate:{}->{}",old.bitrate,new.bitrate));
         retval = true;
     }
     if old.codec != new.codec{
-        println!("  codec    :{}->{}",old.codec,new.codec);
+        result.push_str(&format!(" codec:{}->{}",old.codec,new.codec));
         retval = true;
     }
     /*if old.urlcache != new.url{
         println!("  url      :{}->{}",old.urlcache,new.url);
         retval = true;
     }*/
-    retval
+    if old.check_ok != new.check_ok{
+        if new.check_ok{
+            return (retval,result.green().to_string());
+        }else{
+            return (retval,result.red().to_string());
+        }
+    }else{
+        return (retval,result.yellow().to_string());
+    }
 }
 
 fn update_station(conn: &mysql::Pool, old: &models::StationItem,new_item: &StationCheckItemNew){
     db::insert_check(&conn, &new_item);
     db::update_station(&conn, &new_item);
-    if check_for_change(&old,&new_item){
-        println!("CHANGED: {} URL: {}",old.name,old.url);
-        println!("OLD  {:?}", old);
-        println!("NEW  {:?}", new_item);
+    let (changed,change_str) = check_for_change(&old,&new_item);
+    if changed {
+        println!("{}",change_str.red());
+        //println!("OLD  {:?}", old);
+        //println!("NEW  {:?}", new_item);
     }
 }
 
