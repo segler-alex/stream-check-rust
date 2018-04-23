@@ -112,10 +112,10 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                     url: "".to_string(),
                 };
                 let mut working = false;
-                for i in 1..6 {
-                    if i > 1{
+                for _i in 1..6 {
+                    /*if i > 1{
                         println!("TRY {} - {}", i, station.url);
-                    }
+                    }*/
                     let items = streamcheck::check(&station.url, false);
                     for item in items.iter() {
                         match item {
