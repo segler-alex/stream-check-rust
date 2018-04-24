@@ -98,8 +98,8 @@ fn type_is_stream(content_type: &str) -> Option<&str> {
     }
 }
 
-pub fn check(url: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
-    let request = Request::new(&url, "StreamCheckBot/0.1.0");
+pub fn check(url: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamInfo>> {
+    let request = Request::new(&url, "StreamCheckBot/0.1.0", timeout);
     let mut list: Vec<BoxResult<StreamInfo>> = vec![];
     match request {
         Ok(mut request) => {
@@ -154,7 +154,7 @@ pub fn check(url: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
                                 };
                                 list.push(Ok(stream));
                             }else{
-                                let playlist = decode_playlist(url, &content,check_all);
+                                let playlist = decode_playlist(url, &content,check_all, timeout);
                                 if playlist.len() == 0 {
                                     list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
                                 } else {
@@ -203,7 +203,7 @@ pub fn check(url: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
                 let location = request.info.headers.get("location");
                 match location {
                     Some(location) => {
-                        list.extend(check(location,check_all));
+                        list.extend(check(location,check_all, timeout));
                     }
                     None => {}
                 }
@@ -219,7 +219,7 @@ pub fn check(url: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
     list
 }
 
-fn decode_playlist(url_str: &str, content: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
+fn decode_playlist(url_str: &str, content: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamInfo>> {
     let mut list = vec![];
     let base_url = Url::parse(url_str);
     match base_url {
@@ -230,7 +230,7 @@ fn decode_playlist(url_str: &str, content: &str, check_all: bool) -> Vec<BoxResu
                     let abs_url = base_url.join(&url);
                     match abs_url {
                         Ok(abs_url) => {
-                            let result = check(&abs_url.as_str(),check_all);
+                            let result = check(&abs_url.as_str(),check_all, timeout);
                             if !check_all{
                                 let mut found = false;
                                 for result_single in result.iter() {

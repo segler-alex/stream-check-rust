@@ -54,7 +54,7 @@ use std::time::Duration;
 use std::net::ToSocketAddrs;
 
 impl Request {
-    pub fn new(url_str: &str, agent: &str) -> BoxResult<Request> {
+    pub fn new(url_str: &str, agent: &str, timeout: u64) -> BoxResult<Request> {
         let url = Url::parse(url_str)?;
 
         let host = url.host_str()
@@ -68,9 +68,9 @@ impl Request {
             &addrs_iter
                 .next()
                 .ok_or(RequestError::new("unable to resolve hostname"))?,
-            Duration::from_millis(10 * 1000),
+            Duration::from_secs(timeout),
         )?;
-        stream.set_read_timeout(Some(Duration::from_secs(10)))?;
+        stream.set_read_timeout(Some(Duration::from_secs(timeout)))?;
 
         if url.scheme() == "https" {
             let connector = TlsConnector::builder()?.build()?;
