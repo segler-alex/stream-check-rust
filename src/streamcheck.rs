@@ -111,16 +111,17 @@ pub fn check(url: &str, check_all: bool) -> Vec<BoxResult<StreamInfo>> {
                     let content_type = request.info.headers.get("content-type");
                     match content_type {
                         Some(content_type) => {
-                            if type_is_playlist(content_type) {
+                            let content_type_lower = content_type.to_lowercase();
+                            if type_is_playlist(&content_type_lower) {
                                 is_playlist = true;
-                            } else if type_is_stream(content_type).is_some() {
+                            } else if type_is_stream(&content_type_lower).is_some() {
                                 stream_type =
-                                    String::from(type_is_stream(content_type).unwrap_or(""));
+                                    String::from(type_is_stream(&content_type_lower).unwrap_or(""));
                                 is_stream = true;
                             } else {
                                 list.push(Err(Box::new(StreamCheckError::new(
                                     url,
-                                    &format!("unknown content type {}", content_type),
+                                    &format!("unknown content type {}", content_type_lower),
                                 ))));
                             }
                         }
