@@ -85,6 +85,7 @@ fn type_is_playlist(content_type: &str) -> bool {
 fn type_is_stream(content_type: &str) -> Option<&str> {
     match content_type {
         "audio/mpeg" => Some("MP3"),
+        "audio/x-mpeg" => Some("MP3"),
         "audio/mp3" => Some("MP3"),
         "audio/aac" => Some("AAC"),
         "audio/x-aac" => Some("AAC"),
