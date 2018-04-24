@@ -14,16 +14,16 @@ fn get_stations_query(pool: &mysql::Pool, query: String) -> Vec<StationItem> {
     for result in results {
         for row_ in result {
             let mut row = row_.unwrap();
-            let hls: i32 = row.take("Hls").unwrap_or(0);
-            let ok: i32 = row.take("LastCheckOk").unwrap_or(0);
+            let hls: i32 = row.take_opt("Hls").unwrap_or(Ok(0)).unwrap_or(0);
+            let ok: i32 = row.take_opt("LastCheckOk").unwrap_or(Ok(0)).unwrap_or(0);
             let s = StationItem {
                 id:              row.take("StationID").unwrap(),
                 uuid:            row.take("StationUuid").unwrap_or("".to_string()),
-                name:            row.take("Name").unwrap_or("".to_string()),
-                url:             row.take("Url").unwrap_or("".to_string()),
-                urlcache:        row.take("UrlCache").unwrap_or("".to_string()),
-                codec:           row.take("Codec").unwrap_or("".to_string()),
-                bitrate:         row.take("Bitrate").unwrap_or(0),
+                name:            row.take_opt("Name").unwrap_or(Ok("".to_string())).unwrap_or("".to_string()),
+                url:             row.take_opt("Url").unwrap_or(Ok("".to_string())).unwrap_or("".to_string()),
+                urlcache:        row.take_opt("UrlCache").unwrap_or(Ok("".to_string())).unwrap_or("".to_string()),
+                codec:           row.take_opt("Codec").unwrap_or(Ok("".to_string())).unwrap_or("".to_string()),
+                bitrate:         row.take_opt("Bitrate").unwrap_or(Ok(0)).unwrap_or(0),
                 hls:             hls != 0,
                 check_ok:        ok != 0,
             };
