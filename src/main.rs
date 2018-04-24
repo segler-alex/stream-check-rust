@@ -224,7 +224,9 @@ fn main() {
 
             let checks_hour = db::get_checks(&conn,1,&source);
             let checks_day = db::get_checks(&conn,24,&source);
-            println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day", pause_seconds, checks_hour, checks_day);
+            let stations_broken = db::get_station_count_broken(&conn);
+            let stations_working = db::get_station_count_working(&conn);
+            println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations", pause_seconds, checks_hour, checks_day, stations_working, stations_broken);
             thread::sleep(Duration::from_secs(pause_seconds));
         }
     }

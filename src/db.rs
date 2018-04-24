@@ -34,6 +34,32 @@ fn get_stations_query(pool: &mysql::Pool, query: String) -> Vec<StationItem> {
     stations
 }
 
+pub fn get_station_count_broken(pool: &mysql::Pool) -> u32 {
+    let query = format!("SELECT COUNT(*) AS Items FROM radio.Station WHERE LastCheckOK=0 OR LastCheckOK IS NULL");
+    let results = pool.prep_exec(query, ());
+    for result in results {
+        for row_ in result {
+            let mut row = row_.unwrap();
+            let items: u32 = row.take_opt("Items").unwrap_or(Ok(0)).unwrap_or(0);
+            return items;
+        }
+    }
+    return 0;
+}
+
+pub fn get_station_count_working(pool: &mysql::Pool) -> u32 {
+    let query = format!("SELECT COUNT(*) AS Items FROM radio.Station WHERE LastCheckOK=1");
+    let results = pool.prep_exec(query, ());
+    for result in results {
+        for row_ in result {
+            let mut row = row_.unwrap();
+            let items: u32 = row.take_opt("Items").unwrap_or(Ok(0)).unwrap_or(0);
+            return items;
+        }
+    }
+    return 0;
+}
+
 pub fn get_checks(pool: &mysql::Pool, hours: u32, source: &str) -> u32 {
     let query = format!("SELECT COUNT(*) AS Items FROM StationCheck WHERE Source=? AND CheckTime > NOW() - INTERVAL {} HOUR", hours);
     let results = pool.prep_exec(query, (source,));
