@@ -1,10 +1,10 @@
-extern crate native_tls;
-extern crate playlist_decoder;
-extern crate threadpool;
-extern crate url;
 extern crate hostname;
 extern crate mysql;
+extern crate native_tls;
+extern crate playlist_decoder;
 extern crate quick_xml;
+extern crate threadpool;
+extern crate url;
 
 use std::env;
 
@@ -19,6 +19,9 @@ mod streamcheck;
 use std::time::Duration;
 use hostname::get_hostname;
 use std::thread;
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::channel;
+use std::sync::mpsc::TryRecvError;
 
 use models::StationCheckItemNew;
 
@@ -33,19 +36,19 @@ fn debugcheck(url: &str) {
     }
 }
 
-fn check_for_change(old: &models::StationItem,new: &StationCheckItemNew) -> (bool,String) {
+fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew) -> (bool, String) {
     let mut retval = false;
     let mut result = String::from("");
 
-    if old.check_ok != new.check_ok{
-        if new.check_ok{
+    if old.check_ok != new.check_ok {
+        if new.check_ok {
             result.push('+');
             result.red();
-        }else{
+        } else {
             result.push('-');
         }
         retval = true;
-    }else{
+    } else {
         result.push('~');
     }
     result.push(' ');
@@ -54,41 +57,39 @@ fn check_for_change(old: &models::StationItem,new: &StationCheckItemNew) -> (boo
     result.push('\'');
     result.push(' ');
     result.push_str(&old.url);
-    if old.hls != new.hls{
-        result.push_str(&format!(" hls:{}->{}",old.hls,new.hls));
+    if old.hls != new.hls {
+        result.push_str(&format!(" hls:{}->{}", old.hls, new.hls));
         retval = true;
     }
-    if old.bitrate != new.bitrate{
-        result.push_str(&format!(" bitrate:{}->{}",old.bitrate,new.bitrate));
+    if old.bitrate != new.bitrate {
+        result.push_str(&format!(" bitrate:{}->{}", old.bitrate, new.bitrate));
         retval = true;
     }
-    if old.codec != new.codec{
-        result.push_str(&format!(" codec:{}->{}",old.codec,new.codec));
+    if old.codec != new.codec {
+        result.push_str(&format!(" codec:{}->{}", old.codec, new.codec));
         retval = true;
     }
     /*if old.urlcache != new.url{
         println!("  url      :{}->{}",old.urlcache,new.url);
         retval = true;
     }*/
-    if old.check_ok != new.check_ok{
-        if new.check_ok{
-            return (retval,result.green().to_string());
-        }else{
-            return (retval,result.red().to_string());
+    if old.check_ok != new.check_ok {
+        if new.check_ok {
+            return (retval, result.green().to_string());
+        } else {
+            return (retval, result.red().to_string());
         }
-    }else{
-        return (retval,result.yellow().to_string());
+    } else {
+        return (retval, result.yellow().to_string());
     }
 }
 
-fn update_station(conn: &mysql::Pool, old: &models::StationItem,new_item: &StationCheckItemNew){
+fn update_station(conn: &mysql::Pool, old: &models::StationItem, new_item: &StationCheckItemNew) {
     db::insert_check(&conn, &new_item);
     db::update_station(&conn, &new_item);
-    let (changed,change_str) = check_for_change(&old,&new_item);
+    let (changed, change_str) = check_for_change(&old, &new_item);
     if changed {
-        println!("{}",change_str.red());
-        //println!("OLD  {:?}", old);
-        //println!("NEW  {:?}", new_item);
+        println!("{}", change_str.red());
     }
 }
 
@@ -102,6 +103,29 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
             let source = String::from(source);
             let conn = conn.clone();
             pool.execute(move || {
+                let (_, receiver): (Sender<i32>, Receiver<i32>)= channel();
+                let station_name = station.name.clone();
+                thread::spawn(move || {
+                    for _ in 0..120 {
+                        thread::sleep(Duration::from_secs(1));
+                        let o = receiver.try_recv();
+                        match o {
+                            Ok(_) => {
+                                return;
+                            }
+                            Err(value) => match value {
+                                TryRecvError::Empty => {
+                                    
+                                }
+                                TryRecvError::Disconnected => {
+                                    return;
+                                }
+                            },
+                        }
+                    }
+                    println!("Still not finished: {}", station_name);
+                    std::process::exit(0x0100);
+                });
                 let mut new_item: StationCheckItemNew = StationCheckItemNew {
                     station_uuid: station.uuid.clone(),
                     source: source.clone(),
@@ -167,8 +191,8 @@ fn main() {
         .unwrap_or(String::from("10"))
         .parse()
         .expect("PAUSE_SECONDS is not u64");
-    let source: String = env::var("SOURCE")
-        .unwrap_or(String::from(get_hostname().unwrap_or("".to_string())));
+    let source: String =
+        env::var("SOURCE").unwrap_or(String::from(get_hostname().unwrap_or("".to_string())));
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
 
     println!("DATABASE_URL  : {}", database_url);
@@ -187,7 +211,7 @@ fn main() {
                 dbcheck(&database_url, &source, concurrency, check_stations);
             }
         };
-        if !do_loop{
+        if !do_loop {
             break;
         }
 

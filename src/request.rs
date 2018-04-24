@@ -48,7 +48,6 @@ pub struct Request {
     readable: Box<Read>,
     content_read_done: bool,
     content: String,
-    agent: String,
 }
 
 use std::time::Duration;
@@ -93,7 +92,6 @@ impl Request {
                 readable: Box::new(stream),
                 content_read_done: false,
                 content: String::from(""),
-                agent: String::from(agent),
             })
         } else if url.scheme() == "http" {
             let mut host_str = String::from(host);
@@ -113,7 +111,6 @@ impl Request {
                 readable: Box::new(stream),
                 content_read_done: false,
                 content: String::from(""),
-                agent: String::from(agent),
             })
         } else {
             Err(Box::new(RequestError::new("unknown scheme")))

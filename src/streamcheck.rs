@@ -66,7 +66,7 @@ fn type_is_asx(content_type: &str) -> bool {
 }
 
 fn type_is_xspf(content_type: &str) -> bool {
-    return content_type == "application/xspf+xml" || content_type == "application/xml";
+    return content_type == "application/xspf+xml";
 }
 
 fn type_is_playlist(content_type: &str) -> bool {
