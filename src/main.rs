@@ -207,20 +207,25 @@ fn main() {
     println!("PAUSE_SECONDS : {}", pause_seconds);
     println!("TCP_TIMEOUT   : {}", tcp_timeout);
 
-    loop {
-        match env::args().nth(1) {
-            Some(url) => {
-                debugcheck(&url, tcp_timeout);
+    let conn = db::new(&database_url);
+    if let Ok(conn) = conn {
+        loop {
+            match env::args().nth(1) {
+                Some(url) => {
+                    debugcheck(&url, tcp_timeout);
+                }
+                None => {
+                    dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout);
+                }
+            };
+            if !do_loop {
+                break;
             }
-            None => {
-                dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout);
-            }
-        };
-        if !do_loop {
-            break;
-        }
 
-        println!("Waiting.. ({} secs)", pause_seconds);
-        thread::sleep(Duration::from_secs(pause_seconds));
+            let checks_hour = db::get_checks(&conn,1,&source);
+            let checks_day = db::get_checks(&conn,24,&source);
+            println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day", pause_seconds, checks_hour, checks_day);
+            thread::sleep(Duration::from_secs(pause_seconds));
+        }
     }
 }

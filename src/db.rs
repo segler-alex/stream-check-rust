@@ -34,6 +34,19 @@ fn get_stations_query(pool: &mysql::Pool, query: String) -> Vec<StationItem> {
     stations
 }
 
+pub fn get_checks(pool: &mysql::Pool, hours: u32, source: &str) -> u32 {
+    let query = format!("SELECT COUNT(*) AS Items FROM StationCheck WHERE Source=? AND CheckTime > NOW() - INTERVAL {} HOUR", hours);
+    let results = pool.prep_exec(query, (source,));
+    for result in results {
+        for row_ in result {
+            let mut row = row_.unwrap();
+            let items: u32 = row.take_opt("Items").unwrap_or(Ok(0)).unwrap_or(0);
+            return items;
+        }
+    }
+    return 0;
+}
+
 pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew){
     let query = String::from("INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)");
     let mut my_stmt = pool.prepare(query).unwrap();
