@@ -142,8 +142,9 @@ impl Request {
             Ok(content_length) => {
                 let mut buffer = vec![0; content_length];
                 self.readable.read_exact(&mut buffer)?;
-                let out = String::from_utf8(buffer)?;
-                self.content = out;
+                //let out = String::from_utf8(buffer)?;
+                let out = String::from_utf8_lossy(&buffer);
+                self.content = out.to_string();
                 return Ok(());
             }
             Err(_) => {
@@ -169,8 +170,9 @@ impl Request {
                         break;
                     }
                 }
-                let out = String::from_utf8(result_buffer)?;
-                self.content = out;
+                //let out = String::from_utf8(result_buffer)?;
+                let out = String::from_utf8_lossy(&result_buffer);
+                self.content = out.to_string();
                 return Ok(());
             }
         }
