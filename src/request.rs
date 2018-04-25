@@ -56,9 +56,7 @@ use std::net::ToSocketAddrs;
 use std::vec::IntoIter;
 
 fn connect(addrs: Box<IntoIter<SocketAddr>>, timeout: u64) -> BoxResult<TcpStream> {
-    //.ok_or(RequestError::new("unable to resolve hostname"))?
     for addr in addrs {
-        println!("connect to : {:?}", addr);
         let mut stream = TcpStream::connect_timeout(
             &addr,
             Duration::from_secs(timeout),
