@@ -3,6 +3,7 @@ use native_tls::TlsConnector;
 use std::fmt;
 
 use std::net::TcpStream;
+use std::net::SocketAddr;
 use std::io::{Read, Write};
 
 use std::error::Error;
@@ -52,6 +53,22 @@ pub struct Request {
 
 use std::time::Duration;
 use std::net::ToSocketAddrs;
+use std::vec::IntoIter;
+
+fn connect(addrs: Box<IntoIter<SocketAddr>>, timeout: u64) -> BoxResult<TcpStream> {
+    //.ok_or(RequestError::new("unable to resolve hostname"))?
+    for addr in addrs {
+        println!("connect to : {:?}", addr);
+        let mut stream = TcpStream::connect_timeout(
+            &addr,
+            Duration::from_secs(timeout),
+        );
+        if let Ok(stream) = stream {
+            return Ok(stream);
+        }
+    }
+    return Err(Box::new(RequestError::new("connection was not possible")));
+}
 
 impl Request {
     pub fn new(url_str: &str, agent: &str, timeout: u64) -> BoxResult<Request> {
@@ -63,13 +80,8 @@ impl Request {
             .ok_or(RequestError::new("port unknown"))?;
 
         let connect_str = format!("{}:{}", host, port);
-        let mut addrs_iter = connect_str.to_socket_addrs()?;
-        let mut stream = TcpStream::connect_timeout(
-            &addrs_iter
-                .next()
-                .ok_or(RequestError::new("unable to resolve hostname"))?,
-            Duration::from_secs(timeout),
-        )?;
+        let addrs_iter = connect_str.to_socket_addrs()?;
+        let mut stream: TcpStream = connect(Box::new(addrs_iter),timeout)?;
         stream.set_read_timeout(Some(Duration::from_secs(timeout)))?;
 
         if url.scheme() == "https" {
