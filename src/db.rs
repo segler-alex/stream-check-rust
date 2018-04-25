@@ -86,6 +86,32 @@ pub fn get_checks(pool: &mysql::Pool, hours: u32, source: &str) -> u32 {
     return 0;
 }
 
+pub fn get_deletable_never_working(pool: &mysql::Pool, hours: u32) -> u32 {
+    let query = format!("SELECT COUNT(*) AS Items FROM Station WHERE LastCheckOkTime IS NULL AND Creation < NOW() - INTERVAL {} HOUR", hours);
+    let results = pool.prep_exec(query, ());
+    for result in results {
+        for row_ in result {
+            let mut row = row_.unwrap();
+            let items: u32 = row.take_opt("Items").unwrap_or(Ok(0)).unwrap_or(0);
+            return items;
+        }
+    }
+    return 0;
+}
+
+pub fn get_deletable_were_working(pool: &mysql::Pool, hours: u32) -> u32 {
+    let query = format!("SELECT COUNT(*) AS Items FROM Station WHERE LastCheckOk=0 AND LastCheckOkTime IS NOT NULL AND LastCheckOkTime < NOW() - INTERVAL {} HOUR", hours);
+    let results = pool.prep_exec(query, ());
+    for result in results {
+        for row_ in result {
+            let mut row = row_.unwrap();
+            let items: u32 = row.take_opt("Items").unwrap_or(Ok(0)).unwrap_or(0);
+            return items;
+        }
+    }
+    return 0;
+}
+
 pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew){
     let query = String::from("INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)");
     let mut my_stmt = pool.prepare(query).unwrap();
