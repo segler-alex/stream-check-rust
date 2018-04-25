@@ -19,7 +19,7 @@ mod streamcheck;
 use std::time::Duration;
 use hostname::get_hostname;
 use std::thread;
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc::channel;
 use std::sync::mpsc::TryRecvError;
 
@@ -93,7 +93,15 @@ fn update_station(conn: &mysql::Pool, old: &models::StationItem, new_item: &Stat
     }
 }
 
-fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32, timeout: u64, max_depth: u8, retries: u8) {
+fn dbcheck(
+    connection_str: &str,
+    source: &str,
+    concurrency: usize,
+    stations_count: u32,
+    timeout: u64,
+    max_depth: u8,
+    retries: u8,
+) {
     let conn = db::new(connection_str);
     if let Ok(conn) = conn {
         let stations = db::get_stations_to_check(&conn, 24, stations_count);
@@ -103,7 +111,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
             let source = String::from(source);
             let conn = conn.clone();
             pool.execute(move || {
-                let (_, receiver): (Sender<i32>, Receiver<i32>)= channel();
+                let (_, receiver): (Sender<i32>, Receiver<i32>) = channel();
                 let station_name = station.name.clone();
                 thread::spawn(move || {
                     for _ in 0..120 {
@@ -114,9 +122,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                                 return;
                             }
                             Err(value) => match value {
-                                TryRecvError::Empty => {
-                                    
-                                }
+                                TryRecvError::Empty => {}
                                 TryRecvError::Disconnected => {
                                     return;
                                 }
@@ -225,18 +231,27 @@ fn main() {
                     debugcheck(&url, tcp_timeout);
                 }
                 None => {
-                    dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout, max_depth, retries);
+                    dbcheck(
+                        &database_url,
+                        &source,
+                        concurrency,
+                        check_stations,
+                        tcp_timeout,
+                        max_depth,
+                        retries,
+                    );
                 }
             };
             if !do_loop {
                 break;
             }
 
-            let checks_hour = db::get_checks(&conn,1,&source);
-            let checks_day = db::get_checks(&conn,24,&source);
+            let checks_hour = db::get_checks(&conn, 1, &source);
+            let checks_day = db::get_checks(&conn, 24, &source);
             let stations_broken = db::get_station_count_broken(&conn);
             let stations_working = db::get_station_count_working(&conn);
-            println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations", pause_seconds, checks_hour, checks_day, stations_working, stations_broken);
+            let stations_todo = db::get_station_count_todo(&conn, 24);
+            println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do", pause_seconds, checks_hour, checks_day, stations_working, stations_broken, stations_todo);
             thread::sleep(Duration::from_secs(pause_seconds));
         }
     }
