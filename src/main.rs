@@ -93,7 +93,7 @@ fn update_station(conn: &mysql::Pool, old: &models::StationItem, new_item: &Stat
     }
 }
 
-fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32, timeout: u64, max_depth: u8) {
+fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32, timeout: u64, max_depth: u8, retries: u8) {
     let conn = db::new(connection_str);
     if let Ok(conn) = conn {
         let stations = db::get_stations_to_check(&conn, 24, stations_count);
@@ -136,7 +136,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                     url: "".to_string(),
                 };
                 let mut working = false;
-                for _i in 1..6 {
+                for _i in 0..retries {
                     /*if i > 1{
                         println!("TRY {} - {}", i, station.url);
                     }*/
@@ -199,6 +199,10 @@ fn main() {
         .unwrap_or(String::from("5"))
         .parse()
         .expect("MAX_DEPTH is not u8");
+    let retries: u8 = env::var("RETRIES")
+        .unwrap_or(String::from("5"))
+        .parse()
+        .expect("RETRIES is not u8");
     let source: String =
         env::var("SOURCE").unwrap_or(String::from(get_hostname().unwrap_or("".to_string())));
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
@@ -211,6 +215,7 @@ fn main() {
     println!("PAUSE_SECONDS : {}", pause_seconds);
     println!("TCP_TIMEOUT   : {}", tcp_timeout);
     println!("MAX_DEPTH     : {}", max_depth);
+    println!("RETRIES       : {}", retries);
 
     let conn = db::new(&database_url);
     if let Ok(conn) = conn {
@@ -220,7 +225,7 @@ fn main() {
                     debugcheck(&url, tcp_timeout);
                 }
                 None => {
-                    dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout, max_depth);
+                    dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout, max_depth, retries);
                 }
             };
             if !do_loop {
