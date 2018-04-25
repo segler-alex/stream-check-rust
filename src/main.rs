@@ -251,8 +251,8 @@ fn main() {
             let stations_broken = db::get_station_count_broken(&conn);
             let stations_working = db::get_station_count_working(&conn);
             let stations_todo = db::get_station_count_todo(&conn, 24);
-            let stations_deletable_never_worked = db::get_deletable_never_working(&conn, 24 * 5);
-            let stations_deletable_were_working = db::get_deletable_were_working(&conn, 24 * 60);
+            let stations_deletable_never_worked = db::get_deletable_never_working(&conn, 24 * 3);
+            let stations_deletable_were_working = db::get_deletable_were_working(&conn, 24 * 30);
             println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", pause_seconds, checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
             thread::sleep(Duration::from_secs(pause_seconds));
         }
