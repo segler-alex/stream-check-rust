@@ -99,7 +99,10 @@ fn type_is_stream(content_type: &str) -> Option<&str> {
     }
 }
 
-pub fn check(url: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamInfo>> {
+pub fn check(url: &str, check_all: bool, timeout: u64, max_depth: u8) -> Vec<BoxResult<StreamInfo>> {
+    if max_depth == 0{
+        return vec![Err(Box::new(StreamCheckError::new(url, "max depth reached")))];
+    }
     let request = Request::new(&url, "StreamCheckBot/0.1.0", timeout);
     let mut list: Vec<BoxResult<StreamInfo>> = vec![];
     match request {
@@ -155,7 +158,7 @@ pub fn check(url: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamIn
                                 };
                                 list.push(Ok(stream));
                             }else{
-                                let playlist = decode_playlist(url, &content,check_all, timeout);
+                                let playlist = decode_playlist(url, &content,check_all, timeout, max_depth - 1);
                                 if playlist.len() == 0 {
                                     list.push(Err(Box::new(StreamCheckError::new(url, "Empty playlist"))));
                                 } else {
@@ -204,7 +207,7 @@ pub fn check(url: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamIn
                 let location = request.info.headers.get("location");
                 match location {
                     Some(location) => {
-                        list.extend(check(location,check_all, timeout));
+                        list.extend(check(location,check_all, timeout,max_depth - 1));
                     }
                     None => {}
                 }
@@ -220,18 +223,23 @@ pub fn check(url: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamIn
     list
 }
 
-fn decode_playlist(url_str: &str, content: &str, check_all: bool, timeout: u64) -> Vec<BoxResult<StreamInfo>> {
+fn decode_playlist(url_str: &str, content: &str, check_all: bool, timeout: u64, max_depth: u8) -> Vec<BoxResult<StreamInfo>> {
     let mut list = vec![];
     let base_url = Url::parse(url_str);
     match base_url {
         Ok(base_url) => {
             let urls = playlist_decoder::decode(content);
+            let mut max_urls = 10;
             for url in urls {
+                max_urls = max_urls - 1;
+                if max_urls == 0{
+                    break;
+                }
                 if url.trim() != "" {
                     let abs_url = base_url.join(&url);
                     match abs_url {
                         Ok(abs_url) => {
-                            let result = check(&abs_url.as_str(),check_all, timeout);
+                            let result = check(&abs_url.as_str(),check_all, timeout, max_depth);
                             if !check_all{
                                 let mut found = false;
                                 for result_single in result.iter() {

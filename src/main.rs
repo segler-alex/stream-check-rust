@@ -30,7 +30,7 @@ extern crate colored;
 use colored::*;
 
 fn debugcheck(url: &str, timeout: u64) {
-    let items = streamcheck::check(&url, true, timeout);
+    let items = streamcheck::check(&url, true, timeout, 3);
     for item in items {
         println!("{:?}", item);
     }
@@ -93,7 +93,7 @@ fn update_station(conn: &mysql::Pool, old: &models::StationItem, new_item: &Stat
     }
 }
 
-fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32, timeout: u64) {
+fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_count: u32, timeout: u64, max_depth: u8) {
     let conn = db::new(connection_str);
     if let Ok(conn) = conn {
         let stations = db::get_stations_to_check(&conn, 24, stations_count);
@@ -140,7 +140,7 @@ fn dbcheck(connection_str: &str, source: &str, concurrency: usize, stations_coun
                     /*if i > 1{
                         println!("TRY {} - {}", i, station.url);
                     }*/
-                    let items = streamcheck::check(&station.url, false, timeout);
+                    let items = streamcheck::check(&station.url, false, timeout, max_depth);
                     for item in items.iter() {
                         match item {
                             &Ok(ref item) => {
@@ -207,6 +207,8 @@ fn main() {
     println!("PAUSE_SECONDS : {}", pause_seconds);
     println!("TCP_TIMEOUT   : {}", tcp_timeout);
 
+    let max_depth: u8 = 5;
+
     let conn = db::new(&database_url);
     if let Ok(conn) = conn {
         loop {
@@ -215,7 +217,7 @@ fn main() {
                     debugcheck(&url, tcp_timeout);
                 }
                 None => {
-                    dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout);
+                    dbcheck(&database_url, &source, concurrency, check_stations, tcp_timeout, max_depth);
                 }
             };
             if !do_loop {
