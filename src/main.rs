@@ -195,6 +195,10 @@ fn main() {
         .unwrap_or(String::from("10"))
         .parse()
         .expect("TCP_TIMEOUT is not u64");
+    let max_depth: u8 = env::var("MAX_DEPTH")
+        .unwrap_or(String::from("5"))
+        .parse()
+        .expect("MAX_DEPTH is not u8");
     let source: String =
         env::var("SOURCE").unwrap_or(String::from(get_hostname().unwrap_or("".to_string())));
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
@@ -206,8 +210,7 @@ fn main() {
     println!("STATIONS      : {}", check_stations);
     println!("PAUSE_SECONDS : {}", pause_seconds);
     println!("TCP_TIMEOUT   : {}", tcp_timeout);
-
-    let max_depth: u8 = 5;
+    println!("MAX_DEPTH     : {}", max_depth);
 
     let conn = db::new(&database_url);
     if let Ok(conn) = conn {
