@@ -112,6 +112,26 @@ pub fn get_deletable_were_working(pool: &mysql::Pool, hours: u32) -> u32 {
     return 0;
 }
 
+pub fn delete_never_working(pool: &mysql::Pool, hours: u32) {
+    let query = format!("DELETE FROM Station WHERE LastCheckOkTime IS NULL AND Creation < NOW() - INTERVAL {} HOUR", hours);
+    let mut my_stmt = pool.prepare(query).unwrap();
+    let result = my_stmt.execute(());
+    match result {
+        Ok(_) => {},
+        Err(err) => {println!("{}",err);}
+    }
+}
+
+pub fn delete_were_working(pool: &mysql::Pool, hours: u32) {
+    let query = format!("DELETE FROM Station WHERE LastCheckOk=0 AND LastCheckOkTime IS NOT NULL AND LastCheckOkTime < NOW() - INTERVAL {} HOUR", hours);
+    let mut my_stmt = pool.prepare(query).unwrap();
+    let result = my_stmt.execute(());
+    match result {
+        Ok(_) => {},
+        Err(err) => {println!("{}",err);}
+    }
+}
+
 pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew){
     let query = String::from("INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)");
     let mut my_stmt = pool.prepare(query).unwrap();

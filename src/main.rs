@@ -101,13 +101,15 @@ fn dbcheck(
     timeout: u64,
     max_depth: u8,
     retries: u8,
-) {
+) -> u32 {
     let conn = db::new(connection_str);
+    let mut checked_count = 0;
     if let Ok(conn) = conn {
         let stations = db::get_stations_to_check(&conn, 24, stations_count);
 
         let pool = ThreadPool::new(concurrency);
         for station in stations {
+            checked_count = checked_count + 1;
             let source = String::from(source);
             let conn = conn.clone();
             pool.execute(move || {
@@ -178,6 +180,7 @@ fn dbcheck(
         }
         pool.join();
     }
+    checked_count
 }
 
 fn main() {
@@ -193,6 +196,10 @@ fn main() {
         .unwrap_or(String::from("false"))
         .parse()
         .expect("LOOP is not bool");
+    let delete: bool = env::var("DELETE")
+        .unwrap_or(String::from("false"))
+        .parse()
+        .expect("DELETE is not bool");
     let pause_seconds: u64 = env::var("PAUSE_SECONDS")
         .unwrap_or(String::from("10"))
         .parse()
@@ -222,16 +229,18 @@ fn main() {
     println!("TCP_TIMEOUT   : {}", tcp_timeout);
     println!("MAX_DEPTH     : {}", max_depth);
     println!("RETRIES       : {}", retries);
+    println!("DELETE        : {}", delete);
 
     let conn = db::new(&database_url);
     if let Ok(conn) = conn {
         loop {
+            let mut checked_count = 0;
             match env::args().nth(1) {
                 Some(url) => {
                     debugcheck(&url, tcp_timeout);
                 }
                 None => {
-                    dbcheck(
+                    checked_count = dbcheck(
                         &database_url,
                         &source,
                         concurrency,
@@ -253,8 +262,16 @@ fn main() {
             let stations_todo = db::get_station_count_todo(&conn, 24);
             let stations_deletable_never_worked = db::get_deletable_never_working(&conn, 24 * 3);
             let stations_deletable_were_working = db::get_deletable_were_working(&conn, 24 * 30);
-            println!("Waiting.. ({} secs) {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", pause_seconds, checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
-            thread::sleep(Duration::from_secs(pause_seconds));
+            if delete {
+                db::delete_never_working(&conn, 24 * 3);
+                db::delete_were_working(&conn, 24 * 30);
+            }
+
+            println!("STATS: {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
+            if checked_count == 0 {
+                println!("Waiting.. ({} secs)", pause_seconds);
+                thread::sleep(Duration::from_secs(pause_seconds));
+            }
         }
     }
 }
