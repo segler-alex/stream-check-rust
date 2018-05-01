@@ -145,10 +145,15 @@ fn dbcheck(
                 for item in items.iter() {
                     match item {
                         &Ok(ref item) => {
+                            let mut codec = item.CodecAudio.clone();
+                            if let Some(ref video) = item.CodecVideo {
+                                codec.push_str(",");
+                                codec.push_str(&video);
+                            }
                             new_item = StationCheckItemNew {
                                 station_uuid: station.uuid.clone(),
                                 source: source.clone(),
-                                codec: item.Codec.clone(),
+                                codec: codec,
                                 bitrate: item.Bitrate as i32,
                                 hls: item.Hls,
                                 check_ok: true,
