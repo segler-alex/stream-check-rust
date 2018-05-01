@@ -16,7 +16,7 @@ dependencies = [
 
 [[package]]
 name = "av-stream-info-rust"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -533,7 +533,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "stream-check-rust"
 version = "0.1.0"
 dependencies = [
- "av-stream-info-rust 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "av-stream-info-rust 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hostname 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "mysql 12.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -728,7 +728,7 @@ dependencies = [
 [metadata]
 "checksum aho-corasick 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "d6531d44de723825aa81398a6415283229725a00fa30713812ab9323faa82fc4"
 "checksum atoi 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "baa5dc0129ce09c8c87e2714a0b67c095d4a5e3261a7bbb3d7ac44d43d5dd190"
-"checksum av-stream-info-rust 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "01d6ee83cd2d3f7e1fec009ab1ee1009956fee206a4f5feb46ffd0a1f6d76585"
+"checksum av-stream-info-rust 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4f036a66ae87153377e22dd2d3d14304f395f9ee7f19f671dbea06ee5b835118"
 "checksum backtrace 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "ebbbf59b1c43eefa8c3ede390fcc36820b4999f7914104015be25025e0d62af2"
 "checksum backtrace-sys 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "44585761d6161b0f57afc49482ab6bd067e4edef48c12a152c237eb0203f7661"
 "checksum bit-vec 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "02b4ff8b16e6076c3e14220b39fbc1fabb6737522281a388998046859400895f"
