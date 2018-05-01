@@ -1,8 +1,7 @@
 extern crate hostname;
 extern crate mysql;
 extern crate native_tls;
-extern crate playlist_decoder;
-extern crate quick_xml;
+extern crate av_stream_info_rust;
 extern crate threadpool;
 extern crate url;
 
@@ -13,8 +12,6 @@ pub mod models;
 use threadpool::ThreadPool;
 
 mod db;
-mod request;
-mod streamcheck;
 
 use std::time::Duration;
 use hostname::get_hostname;
@@ -29,8 +26,8 @@ extern crate colored;
 
 use colored::*;
 
-fn debugcheck(url: &str, timeout: u64) {
-    let items = streamcheck::check(&url, true, timeout, 3);
+fn debugcheck(url: &str, timeout: u32) {
+    let items = av_stream_info_rust::check(&url, timeout, 3, 3);
     for item in items {
         println!("{:?}", item);
     }
@@ -98,7 +95,7 @@ fn dbcheck(
     source: &str,
     concurrency: usize,
     stations_count: u32,
-    timeout: u64,
+    timeout: u32,
     max_depth: u8,
     retries: u8,
 ) -> u32 {
@@ -115,8 +112,9 @@ fn dbcheck(
             pool.execute(move || {
                 let (_, receiver): (Sender<i32>, Receiver<i32>) = channel();
                 let station_name = station.name.clone();
+                let max_timeout = (retries as u32) * timeout * 2;
                 thread::spawn(move || {
-                    for _ in 0..120 {
+                    for _ in 0..max_timeout {
                         thread::sleep(Duration::from_secs(1));
                         let o = receiver.try_recv();
                         match o {
@@ -143,36 +141,22 @@ fn dbcheck(
                     check_ok: false,
                     url: "".to_string(),
                 };
-                let mut working = false;
-                for _i in 0..retries {
-                    /*if i > 1{
-                        println!("TRY {} - {}", i, station.url);
-                    }*/
-                    let items = streamcheck::check(&station.url, false, timeout, max_depth);
-                    for item in items.iter() {
-                        match item {
-                            &Ok(ref item) => {
-                                new_item = StationCheckItemNew {
-                                    station_uuid: station.uuid.clone(),
-                                    source: source.clone(),
-                                    codec: item.Codec.clone(),
-                                    bitrate: item.Bitrate as i32,
-                                    hls: item.Hls,
-                                    check_ok: true,
-                                    url: item.Url.clone(),
-                                };
-                                working = true;
-                                break;
-                            }
-                            &Err(_) => {}
+                let items = av_stream_info_rust::check(&station.url, timeout, max_depth, retries);
+                for item in items.iter() {
+                    match item {
+                        &Ok(ref item) => {
+                            new_item = StationCheckItemNew {
+                                station_uuid: station.uuid.clone(),
+                                source: source.clone(),
+                                codec: item.Codec.clone(),
+                                bitrate: item.Bitrate as i32,
+                                hls: item.Hls,
+                                check_ok: true,
+                                url: item.Url.clone(),
+                            };
                         }
+                        &Err(_) => {}
                     }
-
-                    if working {
-                        break;
-                    }
-
-                    thread::sleep(Duration::from_secs(10));
                 }
 
                 update_station(&conn, &station, &new_item);
@@ -204,10 +188,10 @@ fn main() {
         .unwrap_or(String::from("10"))
         .parse()
         .expect("PAUSE_SECONDS is not u64");
-    let tcp_timeout: u64 = env::var("TCP_TIMEOUT")
+    let tcp_timeout: u32 = env::var("TCP_TIMEOUT")
         .unwrap_or(String::from("10"))
         .parse()
-        .expect("TCP_TIMEOUT is not u64");
+        .expect("TCP_TIMEOUT is not u32");
     let max_depth: u8 = env::var("MAX_DEPTH")
         .unwrap_or(String::from("5"))
         .parse()
