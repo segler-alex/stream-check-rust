@@ -220,52 +220,59 @@ fn main() {
     println!("RETRIES       : {}", retries);
     println!("DELETE        : {}", delete);
 
-    let conn = db::new(&database_url);
-    match conn {
-        Ok(conn) => {
-            loop {
-                let mut checked_count = 0;
-                match env::args().nth(1) {
-                    Some(url) => {
-                        debugcheck(&url, tcp_timeout);
+    let database_url2 = database_url.clone();
+    let source2 = source.clone();
+    thread::spawn(move||{
+        loop{
+            let conn = db::new(&database_url2);
+            match conn {
+                Ok(conn) => {
+                    let checks_hour = db::get_checks(&conn, 1, &source2);
+                    let checks_day = db::get_checks(&conn, 24, &source2);
+                    let stations_broken = db::get_station_count_broken(&conn);
+                    let stations_working = db::get_station_count_working(&conn);
+                    let stations_todo = db::get_station_count_todo(&conn, 24);
+                    let stations_deletable_never_worked = db::get_deletable_never_working(&conn, 24 * 3);
+                    let stations_deletable_were_working = db::get_deletable_were_working(&conn, 24 * 30);
+                    if delete {
+                        db::delete_never_working(&conn, 24 * 3);
+                        db::delete_were_working(&conn, 24 * 30);
                     }
-                    None => {
-                        checked_count = dbcheck(
-                            &database_url,
-                            &source,
-                            concurrency,
-                            check_stations,
-                            tcp_timeout,
-                            max_depth,
-                            retries,
-                        );
-                    }
-                };
-                if !do_loop {
-                    break;
-                }
 
-                let checks_hour = db::get_checks(&conn, 1, &source);
-                let checks_day = db::get_checks(&conn, 24, &source);
-                let stations_broken = db::get_station_count_broken(&conn);
-                let stations_working = db::get_station_count_working(&conn);
-                let stations_todo = db::get_station_count_todo(&conn, 24);
-                let stations_deletable_never_worked = db::get_deletable_never_working(&conn, 24 * 3);
-                let stations_deletable_were_working = db::get_deletable_were_working(&conn, 24 * 30);
-                if delete {
-                    db::delete_never_working(&conn, 24 * 3);
-                    db::delete_were_working(&conn, 24 * 30);
+                    println!("STATS: {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
+                    thread::sleep(Duration::from_secs(3600));
                 }
-
-                println!("STATS: {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
-                if checked_count == 0 {
-                    println!("Waiting.. ({} secs)", pause_seconds);
-                    thread::sleep(Duration::from_secs(pause_seconds));
+                _ => {
+                    println!("Connection failed");
                 }
             }
         }
-        Err(e) => {
-            println!("{}", e);
+    });
+
+    loop {
+        let mut checked_count = 0;
+        match env::args().nth(1) {
+            Some(url) => {
+                debugcheck(&url, tcp_timeout);
+            }
+            None => {
+                checked_count = dbcheck(
+                    &database_url,
+                    &source,
+                    concurrency,
+                    check_stations,
+                    tcp_timeout,
+                    max_depth,
+                    retries,
+                );
+            }
+        };
+        if !do_loop {
+            break;
+        }
+
+        if checked_count == 0 {
+            thread::sleep(Duration::from_secs(pause_seconds));
         }
     }
 }
