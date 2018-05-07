@@ -19,7 +19,9 @@ export DATABASE_URL
 stream-check.bin
 EOF
 
-cat <<EOF | sudo tee /etc/stream-check.conf
+CONFIG_FILE="/etc/stream-check.conf"
+if [ ! -f "${CONFIG_FILE}" ]; then
+    cat <<EOF | sudo tee /etc/stream-check.conf
 # do delete not working stations
 DELETE=true
 # tcp timeout for connect and read
@@ -37,6 +39,7 @@ SOURCE=$(hostname)
 # database connection string (mysql, mariadb)
 DATABASE_URL=mysql://myuser:mypassword@localhost/radio
 EOF
+fi
 
 sudo chmod ugo+x /usr/local/bin/stream-check
 sudo groupadd --system streamcheck
