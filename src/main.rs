@@ -387,6 +387,10 @@ fn main() {
     });
 
     loop {
+        if verbosity > 0{
+            println!("new batch");
+        }
+
         let checked_count = dbcheck(
             &database_url,
             &source,
@@ -402,6 +406,9 @@ fn main() {
         }
 
         if checked_count == 0 {
+            if verbosity > 0 {
+                println!("pause for {} secs", pause_seconds);
+            }
             thread::sleep(Duration::from_secs(pause_seconds));
         } else {
             thread::sleep(Duration::from_secs(1));
