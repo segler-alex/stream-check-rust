@@ -101,73 +101,78 @@ fn dbcheck(
 ) -> u32 {
     let conn = db::new(connection_str);
     let mut checked_count = 0;
-    if let Ok(conn) = conn {
-        let stations = db::get_stations_to_check(&conn, 24, stations_count);
+    match conn {
+        Ok(conn) =>{
+            let stations = db::get_stations_to_check(&conn, 24, stations_count);
 
-        let pool = ThreadPool::new(concurrency);
-        for station in stations {
-            checked_count = checked_count + 1;
-            let source = String::from(source);
-            let conn = conn.clone();
-            pool.execute(move || {
-                let (_, receiver): (Sender<i32>, Receiver<i32>) = channel();
-                let station_name = station.name.clone();
-                let max_timeout = (retries as u32) * timeout * 2;
-                thread::spawn(move || {
-                    for _ in 0..max_timeout {
-                        thread::sleep(Duration::from_secs(1));
-                        let o = receiver.try_recv();
-                        match o {
-                            Ok(_) => {
-                                return;
-                            }
-                            Err(value) => match value {
-                                TryRecvError::Empty => {}
-                                TryRecvError::Disconnected => {
+            let pool = ThreadPool::new(concurrency);
+            for station in stations {
+                checked_count = checked_count + 1;
+                let source = String::from(source);
+                let conn = conn.clone();
+                pool.execute(move || {
+                    let (_, receiver): (Sender<i32>, Receiver<i32>) = channel();
+                    let station_name = station.name.clone();
+                    let max_timeout = (retries as u32) * timeout * 2;
+                    thread::spawn(move || {
+                        for _ in 0..max_timeout {
+                            thread::sleep(Duration::from_secs(1));
+                            let o = receiver.try_recv();
+                            match o {
+                                Ok(_) => {
                                     return;
                                 }
-                            },
-                        }
-                    }
-                    println!("Still not finished: {}", station_name);
-                    std::process::exit(0x0100);
-                });
-                let mut new_item: StationCheckItemNew = StationCheckItemNew {
-                    station_uuid: station.uuid.clone(),
-                    source: source.clone(),
-                    codec: "".to_string(),
-                    bitrate: 0,
-                    hls: false,
-                    check_ok: false,
-                    url: "".to_string(),
-                };
-                let items = av_stream_info_rust::check(&station.url, timeout, max_depth, retries);
-                for item in items.iter() {
-                    match item {
-                        &Ok(ref item) => {
-                            let mut codec = item.CodecAudio.clone();
-                            if let Some(ref video) = item.CodecVideo {
-                                codec.push_str(",");
-                                codec.push_str(&video);
+                                Err(value) => match value {
+                                    TryRecvError::Empty => {}
+                                    TryRecvError::Disconnected => {
+                                        return;
+                                    }
+                                },
                             }
-                            new_item = StationCheckItemNew {
-                                station_uuid: station.uuid.clone(),
-                                source: source.clone(),
-                                codec: codec,
-                                bitrate: item.Bitrate as i32,
-                                hls: item.Hls,
-                                check_ok: true,
-                                url: item.Url.clone(),
-                            };
                         }
-                        &Err(_) => {}
+                        println!("Still not finished: {}", station_name);
+                        std::process::exit(0x0100);
+                    });
+                    let mut new_item: StationCheckItemNew = StationCheckItemNew {
+                        station_uuid: station.uuid.clone(),
+                        source: source.clone(),
+                        codec: "".to_string(),
+                        bitrate: 0,
+                        hls: false,
+                        check_ok: false,
+                        url: "".to_string(),
+                    };
+                    let items = av_stream_info_rust::check(&station.url, timeout, max_depth, retries);
+                    for item in items.iter() {
+                        match item {
+                            &Ok(ref item) => {
+                                let mut codec = item.CodecAudio.clone();
+                                if let Some(ref video) = item.CodecVideo {
+                                    codec.push_str(",");
+                                    codec.push_str(&video);
+                                }
+                                new_item = StationCheckItemNew {
+                                    station_uuid: station.uuid.clone(),
+                                    source: source.clone(),
+                                    codec: codec,
+                                    bitrate: item.Bitrate as i32,
+                                    hls: item.Hls,
+                                    check_ok: true,
+                                    url: item.Url.clone(),
+                                };
+                            }
+                            &Err(_) => {}
+                        }
                     }
-                }
 
-                update_station(&conn, &station, &new_item, verbosity);
-            });
+                    update_station(&conn, &station, &new_item, verbosity);
+                });
+            }
+            pool.join();
         }
-        pool.join();
+        Err(e)=>{
+            println!("Database connection error {}", e);
+        }
     }
     checked_count
 }
@@ -379,8 +384,8 @@ fn main() {
 
                 println!("STATS: {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
             }
-            _ => {
-                println!("Connection failed");
+            Err(e) => {
+                println!("Database connection error {}", e);
             }
         }
         thread::sleep(Duration::from_secs(3600));
