@@ -27,8 +27,10 @@ pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
                 }
             }
         }
+        String::from("")
+    }else{
+        String::from(old_favicon)
     }
-    String::from(old_favicon)
 }
 
 fn check_url(url: &str, depth: u8) -> bool {
