@@ -16,6 +16,7 @@ use threadpool::ThreadPool;
 
 mod db;
 mod favicon;
+mod request;
 
 use std::time::Duration;
 use hostname::get_hostname;
@@ -68,7 +69,7 @@ fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew, new_fa
         retval = true;
     }*/
     if old.favicon != new_favicon {
-        result.push_str(&format!(" favicon:{}->{}", old.favicon, new_favicon));
+        result.push_str(&format!(" favicon:'{}'->'{}'", old.favicon, new_favicon));
         retval = true;
     }
     if old.check_ok != new.check_ok {
@@ -103,6 +104,7 @@ fn dbcheck(
     timeout: u32,
     max_depth: u8,
     retries: u8,
+    favicon_checks: bool,
     verbosity: u8,
 ) -> u32 {
     let conn = db::new(connection_str);
@@ -170,9 +172,12 @@ fn dbcheck(
                             &Err(_) => {}
                         }
                     }
-                    let new_favicon = favicon::check(&station.homepage, &station.favicon);
-                    
-                    update_station(&conn, &station, &new_item, &new_favicon, verbosity);
+                    if favicon_checks {
+                        let new_favicon = favicon::check(&station.homepage, &station.favicon);
+                        update_station(&conn, &station, &new_item, &new_favicon, verbosity);
+                    }else{
+                        update_station(&conn, &station, &new_item, &station.favicon, verbosity);
+                    }
                 });
             }
             pool.join();
@@ -300,6 +305,16 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("favicon")
+                .short("f")
+                .long("favicon")
+                .value_name("FAVICON")
+                .help("check favicons and try to repair them")
+                .env("FAVICON")
+                .default_value("false")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("v")
                 .short("v")
                 .multiple(true)
@@ -335,6 +350,11 @@ fn main() {
         .unwrap()
         .parse()
         .expect("delete is not bool");
+    let favicon: bool = matches
+        .value_of("favicon")
+        .unwrap()
+        .parse()
+        .expect("favicon is not bool");
     let pause_seconds: u64 = matches
         .value_of("tcp_timeout")
         .unwrap()
@@ -368,6 +388,7 @@ fn main() {
     println!("MAX_DEPTH     : {}", max_depth);
     println!("RETRIES       : {}", retries);
     println!("DELETE        : {}", delete);
+    println!("FAVICON       : {}", favicon);
 
     let database_url2 = database_url.clone();
     let source2 = source.clone();
@@ -411,6 +432,7 @@ fn main() {
             tcp_timeout,
             max_depth,
             retries,
+            favicon,
             verbosity,
         );
         if !do_loop {
