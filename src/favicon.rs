@@ -2,7 +2,7 @@ use website_icon_extract;
 use request;
 
 pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
-    let check = check_url(old_favicon);
+    let check = check_url(old_favicon, 5);
     if !check {
         if verbosity > 0{
             println!("Check for favicon: {}", homepage);
@@ -31,7 +31,7 @@ pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
     String::from(old_favicon)
 }
 
-fn check_url(url: &str) -> bool {
+fn check_url(url: &str, depth: u8) -> bool {
     let r = request::Request::new(url, "TEST", 5);
     match r {
         Ok(r)=>{
@@ -41,6 +41,15 @@ fn check_url(url: &str) -> bool {
                     let t = t.unwrap();
                     if t.starts_with("image") {
                         return true;
+                    }
+                }
+            }
+            if r.get_code() == 301 || r.get_code() == 302 {
+                let l = r.get_header("location");
+                if l.is_some(){
+                    let l = l.unwrap();
+                    if depth > 0{
+                        return check_url(&l, depth - 1);
                     }
                 }
             }
