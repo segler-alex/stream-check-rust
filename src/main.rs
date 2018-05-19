@@ -6,6 +6,7 @@ extern crate mysql;
 extern crate native_tls;
 extern crate threadpool;
 extern crate url;
+extern crate website_icon_extract;
 
 use clap::{App, Arg};
 
@@ -14,6 +15,7 @@ pub mod models;
 use threadpool::ThreadPool;
 
 mod db;
+mod favicon;
 
 use std::time::Duration;
 use hostname::get_hostname;
@@ -28,7 +30,7 @@ extern crate colored;
 
 use colored::*;
 
-fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew) -> (bool, String) {
+fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew, new_favicon: &str) -> (bool, String) {
     let mut retval = false;
     let mut result = String::from("");
 
@@ -65,6 +67,10 @@ fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew) -> (bo
         println!("  url      :{}->{}",old.urlcache,new.url);
         retval = true;
     }*/
+    if old.favicon != new_favicon {
+        result.push_str(&format!(" favicon:{}->{}", old.favicon, new_favicon));
+        retval = true;
+    }
     if old.check_ok != new.check_ok {
         if new.check_ok {
             return (retval, result.green().to_string());
@@ -76,10 +82,10 @@ fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew) -> (bo
     }
 }
 
-fn update_station(conn: &mysql::Pool, old: &models::StationItem, new_item: &StationCheckItemNew, verbosity: u8) {
+fn update_station(conn: &mysql::Pool, old: &models::StationItem, new_item: &StationCheckItemNew, new_favicon: &str, verbosity: u8) {
     db::insert_check(&conn, &new_item);
     db::update_station(&conn, &new_item);
-    let (changed, change_str) = check_for_change(&old, &new_item);
+    let (changed, change_str) = check_for_change(&old, &new_item, new_favicon);
     if changed {
         println!("{}", change_str.red());
     }else{
@@ -164,8 +170,9 @@ fn dbcheck(
                             &Err(_) => {}
                         }
                     }
-
-                    update_station(&conn, &station, &new_item, verbosity);
+                    let new_favicon = favicon::check(&station.homepage, &station.favicon);
+                    
+                    update_station(&conn, &station, &new_item, &new_favicon, verbosity);
                 });
             }
             pool.join();

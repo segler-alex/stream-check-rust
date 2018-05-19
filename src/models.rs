@@ -9,6 +9,8 @@ pub struct StationItem {
     pub hls: bool,
     pub check_ok: bool,
     pub urlcache: String,
+    pub favicon: String,
+    pub homepage: String,
 }
 
 #[derive(Clone,Debug)]
