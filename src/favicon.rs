@@ -32,7 +32,7 @@ pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
 }
 
 fn check_url(url: &str, depth: u8) -> bool {
-    let r = request::Request::new(url, "TEST", 5);
+    let r = request::Request::new_recursive(url, "TEST", 5);
     match r {
         Ok(r)=>{
             if r.get_code() == 200{
