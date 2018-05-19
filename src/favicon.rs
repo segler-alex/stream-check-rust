@@ -44,15 +44,6 @@ fn check_url(url: &str, depth: u8) -> bool {
                     }
                 }
             }
-            if r.get_code() == 301 || r.get_code() == 302 {
-                let l = r.get_header("location");
-                if l.is_some(){
-                    let l = l.unwrap();
-                    if depth > 0{
-                        return check_url(&l, depth - 1);
-                    }
-                }
-            }
             return false;
         }
         Err(e)=>{
