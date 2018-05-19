@@ -1,22 +1,30 @@
 use website_icon_extract;
 use request;
 
-pub fn check(homepage: &str, old_favicon: &str) -> String {
+pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
     let check = check_url(old_favicon);
     if !check {
-        println!("Check for favicon: {}", homepage);
+        if verbosity > 0{
+            println!("Check for favicon: {}", homepage);
+        }
         let icons = website_icon_extract::extract_icons(homepage, "TEST", 5);
         match icons {
             Ok(icons)=>{
                 if icons.len() > 0 {
-                    println!("Favicon {}", icons[0]);
+                    if verbosity > 0{
+                        println!("Favicon {}", icons[0]);
+                    }
                     return icons[0].clone();
                 }else{
-                    println!("No favicons found for: {}", homepage);
+                    if verbosity > 0{
+                        println!("No favicons found for: {}", homepage);
+                    }
                 }
             }
             Err(e)=>{
-                println!("Favicon error ({}): {}", homepage, e.to_string());
+                if verbosity > 0{
+                    println!("Favicon error ({}): {}", homepage, e.to_string());
+                }
             }
         }
     }

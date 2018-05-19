@@ -69,7 +69,7 @@ fn check_for_change(old: &models::StationItem, new: &StationCheckItemNew, new_fa
         retval = true;
     }*/
     if old.favicon != new_favicon {
-        result.push_str(&format!(" favicon:'{}'->'{}'", old.favicon, new_favicon));
+        result.push_str(&format!(" favicon: {} -> {}", old.favicon, new_favicon));
         retval = true;
     }
     if old.check_ok != new.check_ok {
@@ -173,7 +173,7 @@ fn dbcheck(
                         }
                     }
                     if favicon_checks {
-                        let new_favicon = favicon::check(&station.homepage, &station.favicon);
+                        let new_favicon = favicon::check(&station.homepage, &station.favicon, verbosity);
                         update_station(&conn, &station, &new_item, &new_favicon, verbosity);
                     }else{
                         update_station(&conn, &station, &new_item, &station.favicon, verbosity);
