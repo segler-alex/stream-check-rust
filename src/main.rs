@@ -7,6 +7,7 @@ extern crate native_tls;
 extern crate threadpool;
 extern crate url;
 extern crate website_icon_extract;
+extern crate reqwest;
 
 use clap::{App, Arg};
 
@@ -16,7 +17,6 @@ use threadpool::ThreadPool;
 
 mod db;
 mod favicon;
-mod request;
 
 use std::time::Duration;
 use hostname::get_hostname;

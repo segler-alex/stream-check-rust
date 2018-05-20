@@ -1,4 +1,7 @@
-use request;
+use reqwest;
+use reqwest::header::ContentType;
+use reqwest::header::UserAgent;
+use std::time::Duration;
 use website_icon_extract;
 
 pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
@@ -34,15 +37,26 @@ pub fn check(homepage: &str, old_favicon: &str, verbosity: u8) -> String {
 }
 
 fn check_url(url: &str) -> bool {
-    let r = request::Request::new_recursive(url, "TEST", 5);
-    match r {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build();
+    if client.is_err() {
+        return false;
+    }
+    let client = client.unwrap();
+    let res = client.get(url).header(UserAgent::new("TEST")).send();
+    match res {
         Ok(r) => {
-            if r.get_code() == 200 {
-                let t = r.get_header("content-type");
-                if t.is_some() {
-                    let t = t.unwrap();
-                    if t.starts_with("image") {
-                        return true;
+            if r.status().is_success() {
+                let t = r.headers().get::<ContentType>();
+                match t {
+                    Some(t) => {
+                        if t.to_string().starts_with("image") {
+                            return true;
+                        }
+                    }
+                    None => {
+                        return false;
                     }
                 }
             }
