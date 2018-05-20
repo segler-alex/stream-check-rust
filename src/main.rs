@@ -101,6 +101,7 @@ fn dbcheck(
     source: &str,
     concurrency: usize,
     stations_count: u32,
+    useragent: &str,
     timeout: u32,
     max_depth: u8,
     retries: u8,
@@ -117,6 +118,7 @@ fn dbcheck(
             for station in stations {
                 checked_count = checked_count + 1;
                 let source = String::from(source);
+                let useragent = String::from(useragent);
                 let conn = conn.clone();
                 pool.execute(move || {
                     let (_, receiver): (Sender<i32>, Receiver<i32>) = channel();
@@ -173,7 +175,7 @@ fn dbcheck(
                         }
                     }
                     if favicon_checks {
-                        let new_favicon = favicon::check(&station.homepage, &station.favicon, verbosity);
+                        let new_favicon = favicon::check(&station.homepage, &station.favicon, verbosity, &useragent, timeout);
                         update_station(&conn, &station, &new_item, &new_favicon, verbosity);
                     }else{
                         update_station(&conn, &station, &new_item, &station.favicon, verbosity);
@@ -222,6 +224,16 @@ fn main() {
                 .help("Source string for database check entries")
                 .env("SOURCE")
                 .default_value(&hostname)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("useragent")
+                .short("u")
+                .long("useragent")
+                .value_name("USERAGENT")
+                .help("user agent value for http requests")
+                .env("USERAGENT")
+                .default_value("stream-check/0.1")
                 .takes_value(true),
         )
         .arg(
@@ -377,6 +389,7 @@ fn main() {
         .expect("retries is not u8");
     let source: String = String::from(matches.value_of("source").unwrap());
     let database_url = String::from(matches.value_of("database").unwrap());
+    let useragent = String::from(matches.value_of("useragent").unwrap());
 
     println!("DATABASE_URL  : {}", database_url);
     println!("LOOP          : {}", do_loop);
@@ -389,6 +402,7 @@ fn main() {
     println!("RETRIES       : {}", retries);
     println!("DELETE        : {}", delete);
     println!("FAVICON       : {}", favicon);
+    println!("USERAGENT     : {}", useragent);
 
     let database_url2 = database_url.clone();
     let source2 = source.clone();
@@ -429,6 +443,7 @@ fn main() {
             &source,
             concurrency,
             check_stations,
+            &useragent,
             tcp_timeout,
             max_depth,
             retries,
