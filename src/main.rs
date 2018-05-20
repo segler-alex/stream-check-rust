@@ -1,26 +1,26 @@
 extern crate av_stream_info_rust;
 #[macro_use]
 extern crate clap;
+extern crate colored;
 extern crate hostname;
 extern crate mysql;
 extern crate native_tls;
+extern crate reqwest;
 extern crate threadpool;
 extern crate url;
 extern crate website_icon_extract;
-extern crate reqwest;
-extern crate colored;
 
 use clap::{App, Arg};
 
 pub mod models;
 
+mod check;
 mod db;
 mod favicon;
-mod check;
 
-use std::time::Duration;
 use hostname::get_hostname;
 use std::thread;
+use std::time::Duration;
 
 fn main() {
     let hostname: String = get_hostname().unwrap_or("".to_string());
@@ -265,7 +265,7 @@ fn main() {
     });
 
     loop {
-        if verbosity > 0{
+        if verbosity > 0 {
             println!("new batch");
         }
 
