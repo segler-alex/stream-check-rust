@@ -157,6 +157,26 @@ pub fn update_station(pool: &mysql::Pool,item: &StationCheckItemNew){
     }
 }
 
+pub fn delete_old_checks(pool: &mysql::Pool, hours: u32) {
+    let query = format!("DELETE FROM StationCheck WHERE CheckTime < NOW() - INTERVAL {} HOUR", hours);
+    let mut my_stmt = pool.prepare(query).unwrap();
+    let result = my_stmt.execute(());
+    match result {
+        Ok(_) => {},
+        Err(err) => {println!("{}",err);}
+    }
+}
+
+pub fn delete_old_clicks(pool: &mysql::Pool, hours: u32) {
+    let query = format!("DELETE FROM StationClick WHERE ClickTimestamp < NOW() - INTERVAL {} HOUR", hours);
+    let mut my_stmt = pool.prepare(query).unwrap();
+    let result = my_stmt.execute(());
+    match result {
+        Ok(_) => {},
+        Err(err) => {println!("{}",err);}
+    }
+}
+
 pub fn new(connection_str: &str) -> Result<mysql::Pool, Box<Error>> {
     let pool = mysql::Pool::new(connection_str)?;
     Ok(pool)

@@ -253,6 +253,8 @@ fn main() {
                 if delete {
                     db::delete_never_working(&conn, 24 * 3);
                     db::delete_were_working(&conn, 24 * 30);
+                    db::delete_old_checks(&conn, 24 * 30);
+                    db::delete_old_clicks(&conn, 24 * 30);
                 }
 
                 println!("STATS: {} Checks/Hour, {} Checks/Day, {} Working stations, {} Broken stations, {} to do, deletable {} + {}", checks_hour, checks_day, stations_working, stations_broken, stations_todo, stations_deletable_never_worked, stations_deletable_were_working);
