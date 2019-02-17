@@ -135,9 +135,12 @@ pub fn delete_were_working(pool: &mysql::Pool, hours: u32) {
 }
 
 pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew) -> Result<(), Box<std::error::Error>> {
-    let query = "DELETE FROM StationCheck WHERE Source=? AND StationUuid=?";
+    let query = "DELETE FROM StationCheck WHERE StationUuid=:stationuuid AND Source=:source";
     let mut my_stmt = pool.prepare(query)?;
-    my_stmt.execute((&item.station_uuid,&item.source))?;
+    my_stmt.execute(params!(
+        "stationuuid" => &item.station_uuid,
+        "source" => &item.source
+    ))?;
 
     let query2 = "INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)";
     let mut my_stmt2 = pool.prepare(query2)?;

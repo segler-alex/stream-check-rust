@@ -3,6 +3,7 @@ extern crate av_stream_info_rust;
 extern crate clap;
 extern crate colored;
 extern crate hostname;
+#[macro_use]
 extern crate mysql;
 extern crate native_tls;
 extern crate reqwest;
