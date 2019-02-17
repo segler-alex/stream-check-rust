@@ -81,7 +81,10 @@ fn update_station(
     new_favicon: &str,
     verbosity: u8,
 ) {
-    db::insert_check(&conn, &new_item);
+    let result = db::insert_check(&conn, &new_item);
+    if let Err(err) = result {
+        println!("Insert check error {}", err);
+    }
     db::update_station(&conn, &new_item);
     let (changed, change_str) = check_for_change(&old, &new_item, new_favicon);
     if changed {

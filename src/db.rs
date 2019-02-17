@@ -134,14 +134,19 @@ pub fn delete_were_working(pool: &mysql::Pool, hours: u32) {
     }
 }
 
-pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew){
-    let query = String::from("INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)");
-    let mut my_stmt = pool.prepare(query).unwrap();
-    let result = my_stmt.execute((&item.station_uuid,&item.source,&item.codec,&item.bitrate,&item.hls,&item.check_ok,&item.url));
-    match result {
-        Ok(_) => {},
-        Err(err) => {println!("{}",err);}
-    }
+pub fn insert_check(pool: &mysql::Pool,item: &StationCheckItemNew) -> Result<(), Box<std::error::Error>> {
+    let query = "DELETE FROM StationCheck WHERE Source=? AND StationUuid=?";
+    let mut my_stmt = pool.prepare(query)?;
+    my_stmt.execute((&item.station_uuid,&item.source))?;
+
+    let query2 = "INSERT INTO StationCheck(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)";
+    let mut my_stmt2 = pool.prepare(query2)?;
+    my_stmt2.execute((&item.station_uuid,&item.source,&item.codec,&item.bitrate,&item.hls,&item.check_ok,&item.url))?;
+
+    let query3 = "INSERT INTO StationCheckHistory(StationUuid,CheckUuid,Source,Codec,Bitrate,Hls,CheckOK,CheckTime,UrlCache) VALUES(?,UUID(),?,?,?,?,?,NOW(),?)";
+    let mut my_stmt3 = pool.prepare(query3)?;
+    my_stmt3.execute((&item.station_uuid,&item.source,&item.codec,&item.bitrate,&item.hls,&item.check_ok,&item.url))?;
+    Ok(())
 }
 
 pub fn update_station(pool: &mysql::Pool,item: &StationCheckItemNew){
@@ -158,7 +163,7 @@ pub fn update_station(pool: &mysql::Pool,item: &StationCheckItemNew){
 }
 
 pub fn delete_old_checks(pool: &mysql::Pool, hours: u32) {
-    let query = format!("DELETE FROM StationCheck WHERE CheckTime < NOW() - INTERVAL {} HOUR", hours);
+    let query = format!("DELETE FROM StationCheckHistory WHERE CheckTime < NOW() - INTERVAL {} HOUR", hours);
     let mut my_stmt = pool.prepare(query).unwrap();
     let result = my_stmt.execute(());
     match result {
