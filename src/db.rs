@@ -76,7 +76,7 @@ pub fn get_station_count_todo(pool: &mysql::Pool, hours: i32) -> u32 {
 }
 
 pub fn get_checks(pool: &mysql::Pool, hours: u32, source: &str) -> u32 {
-    let query = format!("SELECT COUNT(*) AS Items FROM StationCheck WHERE Source=? AND CheckTime > NOW() - INTERVAL {} HOUR", hours);
+    let query = format!("SELECT COUNT(*) AS Items FROM StationCheckHistory WHERE Source=? AND CheckTime > NOW() - INTERVAL {} HOUR", hours);
     let results = pool.prep_exec(query, (source,));
     for result in results {
         for row_ in result {
@@ -167,6 +167,14 @@ pub fn update_station(pool: &mysql::Pool,item: &StationCheckItemNew){
 
 pub fn delete_old_checks(pool: &mysql::Pool, hours: u32) {
     let query = format!("DELETE FROM StationCheckHistory WHERE CheckTime < NOW() - INTERVAL {} HOUR", hours);
+    let mut my_stmt = pool.prepare(query).unwrap();
+    let result = my_stmt.execute(());
+    match result {
+        Ok(_) => {},
+        Err(err) => {println!("{}",err);}
+    }
+
+    let query = format!("DELETE FROM StationCheck WHERE CheckTime < NOW() - INTERVAL {} HOUR", hours);
     let mut my_stmt = pool.prepare(query).unwrap();
     let result = my_stmt.execute(());
     match result {
