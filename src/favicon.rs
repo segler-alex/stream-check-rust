@@ -1,6 +1,6 @@
 use reqwest;
-use reqwest::header::ContentType;
-use reqwest::header::UserAgent;
+use reqwest::header::CONTENT_TYPE;
+use reqwest::header::USER_AGENT;
 use std::time::Duration;
 use website_icon_extract;
 
@@ -52,16 +52,19 @@ fn check_url(url: &str, useragent: &str, timeout: u32) -> bool {
     let client = client.unwrap();
     let res = client
         .get(url)
-        .header(UserAgent::new(useragent.to_string()))
+        .header(USER_AGENT, useragent.to_string())
         .send();
     match res {
         Ok(r) => {
             if r.status().is_success() {
-                let t = r.headers().get::<ContentType>();
+                let t = r.headers().get(CONTENT_TYPE);
                 match t {
                     Some(t) => {
-                        if t.to_string().starts_with("image") {
-                            return true;
+                        let value = t.to_str();
+                        if let Ok(value) = value {
+                            if value.starts_with("image"){
+                                return true;
+                            }
                         }
                     }
                     None => {

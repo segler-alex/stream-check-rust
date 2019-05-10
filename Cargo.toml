@@ -1,16 +1,16 @@
 [package]
 name = "stream-check-rust"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["segler <segler_alex@web.de>"]
 
 [dependencies]
-url = "1.7.0"
-native-tls = "0.1.5"
+url = "1.7.2"
+native-tls = "0.2.3"
 threadpool = "1.7.1"
-hostname = "*"
-mysql = "*"
-colored = "*"
-av-stream-info-rust = "0.4.0"
+hostname = "0.1.5"
+mysql = "16.0.2"
+colored = "1.8.0"
+av-stream-info-rust = "0.5.0"
 clap = "2.31.2"
-website-icon-extract = "0.3.0"
-reqwest = "0.8.5"
+website-icon-extract = "0.4.0"
+reqwest = "0.9.16"
