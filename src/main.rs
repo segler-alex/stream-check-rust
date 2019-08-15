@@ -23,7 +23,11 @@ use hostname::get_hostname;
 use std::thread;
 use std::time::Duration;
 
+extern crate env_logger;
+
 fn main() {
+    env_logger::init();
+    
     let hostname: String = get_hostname().unwrap_or("".to_string());
     let matches = App::new("stream-check")
         .version(crate_version!())
